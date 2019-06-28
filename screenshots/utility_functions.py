@@ -1,0 +1,66 @@
+import cv2
+import numpy as np
+
+def extract_pacman(image_path):
+    """
+    @image_path: String of path to image file
+    @returns: A tuple of pacman's (x,y) position
+    """
+
+    pass
+
+
+def extract_blue_ghost(image_path):
+    """
+    @image_path: String of path to image file
+    @returns: A tuple of blue ghost's (x,y) position
+    """
+    pass
+
+def extract_pills(image_path):
+    """
+    @image_path: String of path to image file
+    @returns: A list of tuples of pill (x,y) positions
+              I.E: [(x1,y1),(x2,y2),...,(xn,yn)]
+    """
+    img = cv2.imread(image_path)
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    result = cv2.inRange(hsv, (0, .2*255, .9*255), (20, .4*255, 255))
+    final = cv2.resize(result, (int(0.5*1126), int(0.5*1275)))
+    cv2. imshow("pills", final)
+    cv2.waitKey(0)
+
+def first_pill_position(image_path):
+    img = cv2. imread(image_path)
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    result = cv2.inRange(hsv, (0, .2*255, .9*255), (20, .4*255, 255))
+    height = hsv.shape[0]
+    width = hsv.shape[1]
+    pill_px = np.where(result == 255)
+    mid_first_pill = [0, 0]
+    pill_dist = [0, 0]
+    for i in range(0, len(pill_px[1])):
+        if pill_px[1][i+1] - pill_px[1][i] > 1:
+            mid_first_pill[1] = (pill_px[1][i] + pill_px[1][0])/2
+            pill_dist[1] = pill_px[1][i+1] - pill_px[1][0]
+            break
+    for j in range(0,len(pill_px[0])):
+        if pill_px[0][j+1] - pill_px[0][j] >= 2:
+            mid_first_pill[0] = (pill_px[0][j] + pill_px[0][0])/2
+            pill_dist[0] = pill_px[0][j+1] - pill_px[0][0]
+            break
+    print mid_first_pill, pill_dist
+    for i in range (0,26):
+        cv2.line(result, (mid_first_pill[1]+i*pill_dist[1], 0), (mid_first_pill[1]+i*pill_dist[1], height), (255, 0, 0), 1)
+    for i in range (0,29):
+        cv2.line(result, (0, mid_first_pill[0]+i*pill_dist[0]), (width, mid_first_pill[0]+i*pill_dist[0]), (255, 0, 0), 1)
+    cv2.imshow("pills", result)
+    cv2.waitKey(0)
+
+
+def main():
+    '''extract_pills("screenshot_1.png")'''
+    first_pill_position("screenshot_1.png")
+
+if __name__ == "__main__":
+    main()
