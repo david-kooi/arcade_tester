@@ -1,5 +1,5 @@
-import cv2
-import numpy as np
+
+
 maxval = 1126
 
 def circle_pacman(img):
@@ -14,6 +14,7 @@ def resize_img(img):
     alpha = H/500
     downsize = cv2.resize(img, (int(W / alpha), int(H / alpha)))
     return downsize
+
 
 def extract_pacman(image_path):
     """
@@ -41,6 +42,7 @@ def main():
 if __name__ =="__main__":
     main()
 
+
 def extract_blue_ghost(image_path):
     """
     @image_path: String of path to image file
@@ -55,6 +57,4 @@ def extract_pills(image_path):
               I.E: [(x1,y1),(x2,y2),...,(xn,yn)]
     """
     pass
-
-
 
