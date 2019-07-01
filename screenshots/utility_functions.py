@@ -34,6 +34,7 @@ def first_pill_position(image_path):
     img = cv2. imread(image_path)
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     result = cv2.inRange(hsv, (0, .2*255, .9*255), (20, .4*255, 255))
+    cv2.imshow("before", result)
     height = hsv.shape[0]
     width = hsv.shape[1]
     pill_px = np.where(result == 255)
@@ -49,14 +50,22 @@ def first_pill_position(image_path):
             mid_first_pill[0] = (pill_px[0][j] + pill_px[0][0])/2
             pill_dist[0] = pill_px[0][j+1] - pill_px[0][0]
             break
-    print mid_first_pill, pill_dist
+    pill_list = {"small_pills": [(0, 0)], "big_pills": [(0, 0)]}
+    for i in range (0, 29):
+        for j in range (0, 26):
+            if np.any(img[mid_first_pill[0]+i*pill_dist[0], mid_first_pill[1]+j*pill_dist[1]] == 255):
+                pill_list["small_pills"].append((mid_first_pill[0]+i*pill_dist[0], mid_first_pill[1]+j*pill_dist[1]))
+    for pill in pill_list["small_pills"]:
+        cv2.circle(result, (pill[1], pill[0]), 7, 255)
+    pill_list["small_pills"].remove((0, 0))
     for i in range (0,26):
         cv2.line(result, (mid_first_pill[1]+i*pill_dist[1], 0), (mid_first_pill[1]+i*pill_dist[1], height), (255, 0, 0), 1)
     for i in range (0,29):
         cv2.line(result, (0, mid_first_pill[0]+i*pill_dist[0]), (width, mid_first_pill[0]+i*pill_dist[0]), (255, 0, 0), 1)
-    cv2.imshow("pills", result)
+    final = cv2.resize(result, (int(.5*1126), int(.5*1275)))
+    ret,gray = cv2. threshold(final, 0, 255, cv2.THRESH_BINARY)
+    cv2.imshow("after", gray)
     cv2.waitKey(0)
-
 
 def main():
     '''extract_pills("screenshot_1.png")'''
