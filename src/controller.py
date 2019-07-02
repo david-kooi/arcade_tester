@@ -4,6 +4,7 @@ import subprocess
 from time import sleep
 from pynput.keyboard import Key, Controller
 
+
 from zmq.eventloop.ioloop import IOLoop, PeriodicCallback 
 from zmq.eventloop.zmqstream import ZMQStream
 
@@ -22,7 +23,7 @@ LOG_PATH  = "/home/david/Workspace/sip_framework/logs"
 
 
 
-class Controller(object):
+class ArcadeController(object):
     def __init__(self, data_input_port, console_lvl=INFO, file_lvl=INFO, tp_on=False,\
                                                                       timeout=None):
         """
@@ -68,11 +69,30 @@ class Controller(object):
         """
         Start main event loop of the zmq kernel
         """
+
+        # Change cwd to mame
+        os.chdir(MAME_PATH)
+
+        program = os.path.join(MAME_PATH + "mame64")
+        args = [program]
+        args.append("-window")
+        args.append("pacman")
+        proc_mame = subprocess.Popen(args,stdin=subprocess.PIPE)
+
+        keyboard = Controller()
+
         try:
             self.__logger.debug("Controller Starting") 
             while True:
                 self.__logger.debug("Received game state data")
-                game_state = self.__data_input_socket.recv()
+                #game_state = self.__data_input_socket.recv()
+ 
+            
+                sleep(0.1)
+                keyboard.press(Key.f12)
+                sleep(0.25)
+                keyboard.release(Key.f12)
+  
                 
         except KeyboardInterrupt:
             pass # Fall through to quit
@@ -92,20 +112,8 @@ class Controller(object):
 
 if __name__ == "__main__":
 
-    program = MAME_PATH + "mame64 pacman"
-    args    = "-window"
-
-    controller = Controller(1111, DEBUG)
+    controller = ArcadeController(1111, DEBUG)
     
-
     controller.Start()
 
 
-#    proc_mame = subprocess.Popen([program, args],stdin=subprocess.PIPE)
-#    keyboard = Controller()
-#    sleep(3)
-#    keyboard.press(Key.esc)
-#    
-
-
-    
