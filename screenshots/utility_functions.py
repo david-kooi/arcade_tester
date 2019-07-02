@@ -30,7 +30,7 @@ def extract_pills(image_path):
     cv2. imshow("pills", final)
     cv2.waitKey(0)
 
-def first_pill_position(image_path):
+def find_pills(image_path):
     img = cv2. imread(image_path)
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     result = cv2.inRange(hsv, (0, .2*255, .9*255), (20, .4*255, 255))
@@ -67,9 +67,29 @@ def first_pill_position(image_path):
     cv2.imshow("after", gray)
     cv2.waitKey(0)
 
+def draw_track(image_path):
+    img = cv2. imread(image_path)
+    new_img = np.zeros((1275, 1126, 1), np.uint8)
+    hsv = cv2. cvtColor(img, cv2.COLOR_BGR2HSV)
+    result = cv2.inRange(hsv, (110, .8*255, .9*255), (130, .95*255, 255))
+    cv2.imshow("track", result)
+    cv2.waitKey(0)
+    _, contours, _ = cv2.findContours(result, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    for contour in contours:
+        if cv2.contourArea(contour) > 85:
+            cv2.drawContours(new_img, contour, -1, 255, 1)
+            print cv2.contourArea(contour)
+    final = cv2.resize(new_img, (int(.5*1126), int(.5*1275)))
+    ret,gray = cv2. threshold(final, 0, 255, cv2.THRESH_BINARY)
+    cv2.imshow("newtrack", gray)
+    cv2.waitKey(0)
+
+
+
 def main():
     '''extract_pills("screenshot_1.png")'''
-    first_pill_position("screenshot_1.png")
+    '''find_pills("screenshot_1.png")'''
+    draw_track("screenshot_1.png")
 
 if __name__ == "__main__":
     main()
