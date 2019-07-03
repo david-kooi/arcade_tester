@@ -21,8 +21,6 @@ LOG_PATH  = "/home/david/Workspace/sip_framework/logs"
 
 
 
-
-
 class ArcadeController(object):
     def __init__(self, data_input_port, console_lvl=INFO, file_lvl=INFO, tp_on=False,\
                                                                       timeout=None):
@@ -59,13 +57,17 @@ class ArcadeController(object):
                 raise e
 
 
-    def GetContext(self):
+        # Get keyboard emulator
+        self.__keyboard = Controller()
+
+
+    def get_zmq_context(self):
         """
         Return zmq context.
         """
         return self.__context
     
-    def Start(self):
+    def start(self):
         """
         Start main event loop of the zmq kernel
         """
@@ -79,27 +81,28 @@ class ArcadeController(object):
         args.append("pacman")
         proc_mame = subprocess.Popen(args,stdin=subprocess.PIPE)
 
-        keyboard = Controller()
-
         try:
             self.__logger.debug("Controller Starting") 
             while True:
                 self.__logger.debug("Received game state data")
                 #game_state = self.__data_input_socket.recv()
- 
-            
-                sleep(0.1)
-                keyboard.press(Key.f12)
-                sleep(0.25)
-                keyboard.release(Key.f12)
+
+                self.request_screen()
   
                 
         except KeyboardInterrupt:
             pass # Fall through to quit
 
-        self.Quit()  
+        self.quit()  
+
+    def request_screen(self):
+
+        sleep(0.1)
+        self.__keyboard.press(Key.f12)
+        sleep(0.25)
+        self.__keyboard.release(Key.f12)
           
-    def Quit(self):
+    def quit(self):
         """
         Shut down server
         """
@@ -112,8 +115,7 @@ class ArcadeController(object):
 
 if __name__ == "__main__":
 
-    controller = ArcadeController(1111, DEBUG)
-    
-    controller.Start()
+    controller = ArcadeController(1111, DEBUG) 
+    controller.start()
 
 
