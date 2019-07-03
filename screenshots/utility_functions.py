@@ -34,34 +34,60 @@ def find_pills(image_path):
     img = cv2. imread(image_path)
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     result = cv2.inRange(hsv, (0, .2*255, .9*255), (20, .4*255, 255))
-    cv2.imshow("before", result)
     height = hsv.shape[0]
     width = hsv.shape[1]
     pill_px = np.where(result == 255)
     mid_first_pill = [0, 0]
+    mid_last_pill = [0, 0]
     pill_dist = [0, 0]
+    # get mid-point of firet and last pill
     for i in range(0, len(pill_px[1])):
         if pill_px[1][i+1] - pill_px[1][i] > 1:
             mid_first_pill[1] = (pill_px[1][i] + pill_px[1][0])/2
             pill_dist[1] = pill_px[1][i+1] - pill_px[1][0]
             break
-    for j in range(0,len(pill_px[0])):
+    for i in range(1, len(pill_px[1])):
+        if pill_px[1][len(pill_px[1])-i] - pill_px[1][len(pill_px[1])-i-1] > 1:
+            mid_last_pill[1] = (pill_px[1][len(pill_px[1])-i] + pill_px[1][len(pill_px[1])-1])/2
+            break
+    for j in range(0, len(pill_px[0])):
         if pill_px[0][j+1] - pill_px[0][j] >= 2:
             mid_first_pill[0] = (pill_px[0][j] + pill_px[0][0])/2
             pill_dist[0] = pill_px[0][j+1] - pill_px[0][0]
             break
+    for j in range(1, len(pill_px[0])):
+        if pill_px[0][len(pill_px[0])-j] - pill_px[0][len(pill_px[0])-j-1] >= 2:
+            mid_last_pill[0] = (pill_px[0][len(pill_px[0])-j] + pill_px[0][len(pill_px[0])-1])/2
+            break
     pill_list = {"small_pills": [(0, 0)], "big_pills": [(0, 0)]}
-    for i in range (0, 29):
-        for j in range (0, 26):
-            if np.any(img[mid_first_pill[0]+i*pill_dist[0], mid_first_pill[1]+j*pill_dist[1]] == 255):
-                pill_list["small_pills"].append((mid_first_pill[0]+i*pill_dist[0], mid_first_pill[1]+j*pill_dist[1]))
+    # check if pill is at intersection
+    for j in range (0, 26):
+        for i in range (0, 15):
+            if np.any(result[mid_first_pill[0]+i*pill_dist[0], mid_first_pill[1]+j*pill_dist[1]] == 255):
+                if i == 2 and (j == 0 or j == 25):
+                    pill_list["big_pills"].append((mid_first_pill[0] + i * pill_dist[0], mid_first_pill[1] + j * pill_dist[1]))
+                else:
+                    pill_list["small_pills"].append((mid_first_pill[0]+i*pill_dist[0], mid_first_pill[1]+j*pill_dist[1]))
+        for i in range (0, 14):
+            if np.any(result[mid_last_pill[0]-i*pill_dist[0], mid_first_pill[1]+j*pill_dist[1]] == 255):
+                if i == 6 and (j == 0 or j == 25):
+                    pill_list["big_pills"].append((mid_last_pill[0] - i * pill_dist[0], mid_first_pill[1] + j * pill_dist[1]))
+                else:
+                    pill_list["small_pills"].append((mid_last_pill[0]-i*pill_dist[0], mid_first_pill[1]+j*pill_dist[1]))
+    del pill_list["small_pills"][0]
+    del pill_list["big_pills"][0]
+    # draw circles at pill points
     for pill in pill_list["small_pills"]:
-        cv2.circle(result, (pill[1], pill[0]), 7, 255)
-    pill_list["small_pills"].remove((0, 0))
+        cv2.circle(result, (pill[1], pill[0]), 10, 255)
+    for pill in pill_list["big_pills"]:
+        cv2.circle(result, (pill[1], pill[0]), 30, 255)
+    # draw grid lines
     for i in range (0,26):
         cv2.line(result, (mid_first_pill[1]+i*pill_dist[1], 0), (mid_first_pill[1]+i*pill_dist[1], height), (255, 0, 0), 1)
-    for i in range (0,29):
+    for i in range (0,15):
         cv2.line(result, (0, mid_first_pill[0]+i*pill_dist[0]), (width, mid_first_pill[0]+i*pill_dist[0]), (255, 0, 0), 1)
+    for i in range (0,14):
+        cv2.line(result, (0, mid_last_pill[0]-i*pill_dist[0]), (width, mid_last_pill[0]-i*pill_dist[0]), (255, 0, 0), 1)
     final = cv2.resize(result, (int(.5*1126), int(.5*1275)))
     ret,gray = cv2. threshold(final, 0, 255, cv2.THRESH_BINARY)
     cv2.imshow("after", gray)
@@ -88,8 +114,8 @@ def draw_track(image_path):
 
 def main():
     '''extract_pills("screenshot_1.png")'''
-    '''find_pills("screenshot_1.png")'''
-    draw_track("screenshot_1.png")
+    find_pills("screenshot_1.png")
+    '''draw_track("screenshot_1.png")'''
 
 if __name__ == "__main__":
     main()
