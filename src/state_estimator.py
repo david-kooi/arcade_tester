@@ -17,16 +17,17 @@ game_state = {}
 def dictionary(image_path):
     sprite_positions = extract_COLORS(image_path)
 
-    game_state["PACMAN"] = sprite_positions[0],
-    game_state["GHOSTRED"] = sprite_positions[1]
-    game_state["GHOSTBLUE"] = sprite_positions[2]
-    game_state["GHOSTORANGE"] = sprite_positions[3]
-    game_state["GHOSTPINK"] = sprite_positions[4]
-
+    game_state["PACMAN"] = sprite_positions[0]
+    game_state["GHRED"] = sprite_positions[1]
+    game_state["GHBLUE"] = sprite_positions[2]
+    game_state["GHORANGE"] = sprite_positions[3]
+    game_state["GHPINK"] = sprite_positions[4]
+    process_pills(image_path)
 
 
 def extract_COLORS(image_path):
     img = cv2.imread(image_path)
+    cv2.line(img, (522, 534), (600, 534), (255, 33, 33), 14)
     img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     positions = []
     for color in COLOR_LIST:
@@ -85,8 +86,11 @@ def process_pills(image_path):
     @returns: xy values of red pills
     """
     img = cv2.imread(image_path)
+    cv2.line(img, (522, 534), (600, 534), (255, 33, 33), 14)
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     result = cv2.inRange(hsv, (0, .2 * 255, .9 * 255), (20, .4 * 255, 255))
+    cv2.imshow("newtrack", result)
+    cv2.waitKey(0)
     height = hsv.shape[0]
     width = hsv.shape[1]
     pill_px = np.where(result == 255)
@@ -146,34 +150,36 @@ def process_obs(BORDER_BLUE, hsv_img):
 
 def draw_track(image_path):
     img = cv2. imread(image_path)
+    cv2.line(img, (522, 534), (600, 534), (255, 33, 33), 14)
+    cv2.imshow("newtrack", img)
+    cv2.waitKey(0)
     new_img = np.zeros((1275, 1126, 3), np.uint8)
     hsv = cv2. cvtColor(img, cv2.COLOR_BGR2HSV)
     result = cv2.inRange(hsv, (110, .8*255, .9*255), (130, .95*255, 255))
-    contours = cv2.findContours(result, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    _, contours, _ = cv2.findContours(result, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     for contour in contours:
         if cv2.contourArea(contour) > 85:
             cv2.drawContours(new_img, contour, -1, 255, 1)
             print cv2.contourArea(contour)
 
-
-
-    cv2.circle(img, (game_state["PACMAN"]), 25, (0, 255, 255))
-    cv2.circle(img, (game_state["REDGHOST"]), 25, (0, 0, 255))
-    cv2.circle(img, (game_state["BLUEGHOST"]), 25, (255, 255, 0))
-    cv2.circle(img, (game_state["ORANGEGHOST"]), 25, (75, 170, 233))
-    cv2.circle(img, (game_state["PINKGHOST"]), 25, (255, 185, 255))
+    cv2.circle(new_img, (game_state["PACMAN"][1], game_state["PACMAN"][0]), 25, (0, 255, 255))
+    cv2.circle(new_img, (game_state["GHRED"][1], game_state["GHRED"][0]), 25, (0, 0, 255))
+    cv2.circle(new_img, (game_state["GHBLUE"][1], game_state["GHBLUE"][0]), 25, (255, 255, 0))
+    cv2.circle(new_img, (game_state["GHORANGE"][1], game_state["GHORANGE"][0]), 25, (75, 170, 233))
+    cv2.circle(new_img, (game_state["GHPINK"][1], game_state["GHPINK"][0]), 25, (255, 185, 255))
     for pill in game_state["small_pills"]:
-        cv2.circle(result, pill, 7, (255, 255, 255))
+        cv2.circle(new_img, (pill[1], pill[0]), 7, (255, 255, 255))
     for pill in game_state["big_pills"]:
-        cv2.circle(result, pill, 25, (255, 255, 255))
+        cv2.circle(new_img, (pill[1], pill[0]), 25, (255, 255, 255))
 
 
     final = cv2.resize(new_img, (int(.5*1126), int(.5*1275)))
-    ret,gray = cv2. threshold(final, 0, (255, 0, 0), cv2.THRESH_BINARY)
-    cv2.imshow("newtrack", gray)
+    #ret,gray = cv2.threshold(final, 0, (255, 0, 0), cv2.THRESH_BINARY)
+    cv2.imshow("newtrack", final)
     cv2.waitKey(0)
 
 def main():
+
     #extract_COLORS("screenshot_2.png")
     #sprite_pos = extract_COLORS(image_path)
     #pill_pos = process_pills(image_path)
@@ -184,5 +190,6 @@ if __name__ == "__main__":
     main()
 
 
-
+#522, 534
+#600, 534
 

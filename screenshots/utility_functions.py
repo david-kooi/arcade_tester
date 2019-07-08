@@ -143,7 +143,7 @@ def draw_track(image_path):
 
 
 def main():
-    '''extract_pills("screenshot_1.png")'''
+    #extract_pills("screenshot_1.png")
     #extract_pacman("screenshot_1.png")
     find_pills("screenshot_1.png")
     draw_track("screenshot_1.png")

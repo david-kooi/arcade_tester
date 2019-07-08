@@ -15,8 +15,8 @@ from utils import logging_util
 from utils.logging_util import GetLogger
 
 
-MAME_PATH = "/home/david/Workspace/mame/"
-LOG_PATH  = "/home/david/Workspace/sip_framework/logs"
+MAME_PATH = "/home/howardtang/Documents/mame"
+LOG_PATH  = "/home/howardtang/Documents/arcade_tester/logs"
 
 
 
