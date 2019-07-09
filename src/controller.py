@@ -1,5 +1,6 @@
 import os
 import zmq
+import pickle
 import subprocess
 from time import sleep
 from pynput.keyboard import Key, Controller
@@ -72,7 +73,9 @@ class Controller(object):
             self.__logger.debug("Controller Starting") 
             while True:
                 self.__logger.debug("Received game state data")
-                game_state = self.__data_input_socket.recv()
+                #game_state = self.__data_input_socket.recv()
+                dict2 = pickle.load(open(self.__data_input_socket.recv(), "rb"))
+                print dict2
                 
         except KeyboardInterrupt:
             pass # Fall through to quit

@@ -1,6 +1,11 @@
 import cv2
 import numpy as np
-
+import zmq
+import time
+import pickle
+import sys
+from ruamel.yaml import YAML
+from ruamel.yaml.compat import StringIO
 
 # Sprite colors in HSV
 PAC_YELLOW = (60, 255, 255)
@@ -34,11 +39,8 @@ def extract_COLORS(image_path):
         lower_bound = ((color[0]-30)/2, color[1]-30, color[2]-30)
         upper_bound = ((color[0]+30)/2, color[1]+30, color[2]+30)
         mask0 = cv2.inRange(img_hsv, lower_bound, upper_bound)
-        cv2.imshow("sprites", mask0)
         x_output, y_output = get_avg_pos(mask0)
-        print x_output, y_output
         positions.append((x_output, y_output))
-        cv2.waitKey(0)
     return positions
 
 def get_img(img_path):
@@ -89,8 +91,6 @@ def process_pills(image_path):
     cv2.line(img, (522, 534), (600, 534), (255, 33, 33), 14)
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     result = cv2.inRange(hsv, (0, .2 * 255, .9 * 255), (20, .4 * 255, 255))
-    cv2.imshow("newtrack", result)
-    cv2.waitKey(0)
     height = hsv.shape[0]
     width = hsv.shape[1]
     pill_px = np.where(result == 255)
@@ -151,8 +151,6 @@ def process_obs(BORDER_BLUE, hsv_img):
 def draw_track(image_path):
     img = cv2. imread(image_path)
     cv2.line(img, (522, 534), (600, 534), (255, 33, 33), 14)
-    cv2.imshow("newtrack", img)
-    cv2.waitKey(0)
     new_img = np.zeros((1275, 1126, 3), np.uint8)
     hsv = cv2. cvtColor(img, cv2.COLOR_BGR2HSV)
     result = cv2.inRange(hsv, (110, .8*255, .9*255), (130, .95*255, 255))
@@ -178,18 +176,34 @@ def draw_track(image_path):
     cv2.imshow("newtrack", final)
     cv2.waitKey(0)
 
-def main():
+class MyYAML(YAML):
+    def dump(self, data, stream=None, **kw):
+        inefficient = False
+        if stream is None:
+            inefficient = True
+            stream = StringIO()
+        YAML.dump(self, data, stream, **kw)
+        if inefficient:
+            return stream.getvalue()
 
-    #extract_COLORS("screenshot_2.png")
-    #sprite_pos = extract_COLORS(image_path)
-    #pill_pos = process_pills(image_path)
+def main():
     dictionary("screenshot_2.png")
-    draw_track("screenshot_2.png")
+    #draw_track("screenshot_2.png")
+
+    port = 1111
+    context = zmq.Context()
+    socket = context.socket(zmq.PUB)
+    socket.bind("tcp://*:1111")
+
+    pickle.dump(game_state, open("dict1.p", "wb"))
+
+    yaml = YAML()
+    #yaml.default_flow_style = False
+    print(yaml.dump_all(game_state, sys.stdout))
+
+    while True:
+        socket.send("dict1.p")
+        time.sleep(1)
 
 if __name__ == "__main__":
     main()
-
-
-#522, 534
-#600, 534
-
