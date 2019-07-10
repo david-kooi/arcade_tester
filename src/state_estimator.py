@@ -4,8 +4,6 @@ import zmq
 import time
 import pickle
 import sys
-from ruamel.yaml import YAML
-from ruamel.yaml.compat import StringIO
 
 # Sprite colors in HSV
 PAC_YELLOW = (60, 255, 255)
@@ -176,18 +174,14 @@ def draw_track(image_path):
     cv2.imshow("newtrack", final)
     cv2.waitKey(0)
 
-class MyYAML(YAML):
-    def dump(self, data, stream=None, **kw):
-        inefficient = False
-        if stream is None:
-            inefficient = True
-            stream = StringIO()
-        YAML.dump(self, data, stream, **kw)
-        if inefficient:
-            return stream.getvalue()
 
 def main():
+
+    tic = time.clock()
     dictionary("screenshot_2.png")
+    toc = time.clock()
+    print("Processing Time: {}".format(toc-tic))
+
     #draw_track("screenshot_2.png")
 
     port = 1111
@@ -196,10 +190,6 @@ def main():
     socket.bind("tcp://*:1111")
 
     pickle.dump(game_state, open("dict1.p", "wb"))
-
-    yaml = YAML()
-    #yaml.default_flow_style = False
-    print(yaml.dump_all(game_state, sys.stdout))
 
     while True:
         socket.send("dict1.p")
