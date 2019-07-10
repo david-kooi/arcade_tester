@@ -1,5 +1,6 @@
 import os
 import zmq
+import pickle
 import subprocess
 from time import sleep
 from pynput.keyboard import Key, Controller
@@ -16,8 +17,8 @@ from utils import logging_util
 from utils.logging_util import GetLogger
 
 
-MAME_PATH = "/home/david/Workspace/mame/"
-LOG_PATH  = "/home/david/Workspace/sip_framework/logs"
+MAME_PATH = "/home/howardtang/Documents/mame"
+LOG_PATH  = "/home/howardtang/Documents/arcade_tester/logs"
 
 
 
@@ -84,17 +85,30 @@ class ArcadeController(object):
         try:
             self.__logger.debug("Controller Starting") 
             while True:
-                self.__logger.debug("Received game state data")
-                #game_state = self.__data_input_socket.recv()
-
+                self.__logger.debug("Requesting Screen")
                 self.request_screen()
-  
+
+                # Better to do operations explicitly
+                self.__logger.debug("Waiting for game state data")
+                pkled_data           = self.__data_input_socket.recv()
+                gm_st_dict = pickle.loads(pkled_data) 
+                self.__logger.debug("Recieved game state data")
+                
+                self.do_control(gm_st_dict)
+                
+                # Old way V
+                #dict2 = pickle.load(open(self.__data_input_socket.recv(), "rb"))
+                #print dict2
+
                 
         except KeyboardInterrupt:
             pass # Fall through to quit
 
         self.quit()  
 
+    def do_control(self, gm_st_dict):
+        pass
+        
     def request_screen(self):
 
         sleep(0.1)
