@@ -2,4 +2,4 @@
 cfg/*
 *.pyc
 *.log
-logs
+logs/
