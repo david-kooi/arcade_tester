@@ -189,10 +189,11 @@ def main():
     socket = context.socket(zmq.PUB)
     socket.bind("tcp://*:1111")
 
-    pickle.dump(game_state, open("dict1.p", "wb"))
+    pkled_data = pickle.dumps(game_state) 
+    #pickle.dump(game_state, open("dict1.p", "wb"))
 
     while True:
-        socket.send("dict1.p")
+        socket.send(pkled_data)
         time.sleep(1)
 
 if __name__ == "__main__":

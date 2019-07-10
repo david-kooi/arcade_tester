@@ -82,7 +82,9 @@ class ArcadeController(object):
 
                 # Better to do operations explicitly
                 self.__logger.debug("Waiting for game state data")
-                pkled_data           = self.__data_input_socket.recv()
+                pkled_data = self.__data_input_socket.recv()
+                #pkled_data = pkled_data.decode()
+                print(pkled_data)
                 gm_st_dict = pickle.loads(pkled_data) 
                 self.__logger.debug("Recieved game state data")
                 
