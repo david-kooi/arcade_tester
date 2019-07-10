@@ -17,8 +17,13 @@ from utils import logging_util
 from utils.logging_util import GetLogger
 
 
-MAME_PATH = "/home/howardtang/Documents/mame"
-LOG_PATH  = "/home/howardtang/Documents/arcade_tester/logs"
+
+# Path to arcade tester project root
+AT_ROOT   = os.environ["AT_ROOT"]
+LOG_PATH  = os.path.join(AT_ROOT, "logs")
+
+# Path to mame file system
+MAME_PATH = os.environ["MAME_PATH"]
 
 
 
@@ -62,25 +67,12 @@ class ArcadeController(object):
         self.__keyboard = Controller()
 
 
-    def get_zmq_context(self):
-        """
-        Return zmq context.
-        """
-        return self.__context
-    
     def start(self):
         """
         Start main event loop of the zmq kernel
         """
 
-        # Change cwd to mame
-        os.chdir(MAME_PATH)
-
-        program = os.path.join(MAME_PATH + "mame64")
-        args = [program]
-        args.append("-window")
-        args.append("pacman")
-        proc_mame = subprocess.Popen(args,stdin=subprocess.PIPE)
+        self.start_game()
 
         try:
             self.__logger.debug("Controller Starting") 
@@ -109,6 +101,24 @@ class ArcadeController(object):
     def do_control(self, gm_st_dict):
         pass
         
+
+    def get_zmq_context(self):
+        """
+        Return zmq context.
+        """
+        return self.__context
+    
+    def start_game(self):
+
+        # Change cwd to mame
+        os.chdir(MAME_PATH)
+
+        program = os.path.join(MAME_PATH,"mame64")
+        args = [program]
+        args.append("-window")
+        args.append("pacman")
+        proc_mame = subprocess.Popen(args,stdin=subprocess.PIPE)
+
     def request_screen(self):
 
         sleep(0.1)
@@ -125,6 +135,7 @@ class ArcadeController(object):
         # Must close all sockets before context will terminate
         self.__data_input_socket.close()
         self.__context.term() 
+
 
 
 if __name__ == "__main__":
