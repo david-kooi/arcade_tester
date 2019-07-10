@@ -5,6 +5,7 @@ import subprocess
 from time import sleep
 from pynput.keyboard import Key, Controller
 
+
 from zmq.eventloop.ioloop import IOLoop, PeriodicCallback 
 from zmq.eventloop.zmqstream import ZMQStream
 
@@ -21,9 +22,7 @@ LOG_PATH  = "/home/howardtang/Documents/arcade_tester/logs"
 
 
 
-
-
-class Controller(object):
+class ArcadeController(object):
     def __init__(self, data_input_port, console_lvl=INFO, file_lvl=INFO, tp_on=False,\
                                                                       timeout=None):
         """
@@ -59,30 +58,65 @@ class Controller(object):
                 raise e
 
 
-    def GetContext(self):
+        # Get keyboard emulator
+        self.__keyboard = Controller()
+
+
+    def get_zmq_context(self):
         """
         Return zmq context.
         """
         return self.__context
     
-    def Start(self):
+    def start(self):
         """
         Start main event loop of the zmq kernel
         """
+
+        # Change cwd to mame
+        os.chdir(MAME_PATH)
+
+        program = os.path.join(MAME_PATH + "mame64")
+        args = [program]
+        args.append("-window")
+        args.append("pacman")
+        proc_mame = subprocess.Popen(args,stdin=subprocess.PIPE)
+
         try:
             self.__logger.debug("Controller Starting") 
             while True:
-                self.__logger.debug("Received game state data")
-                #game_state = self.__data_input_socket.recv()
-                dict2 = pickle.load(open(self.__data_input_socket.recv(), "rb"))
-                print dict2
+                self.__logger.debug("Requesting Screen")
+                self.request_screen()
+
+                # Better to do operations explicitly
+                self.__logger.debug("Waiting for game state data")
+                pkled_data           = self.__data_input_socket.recv()
+                gm_st_dict = pickle.loads(pkled_data) 
+                self.__logger.debug("Recieved game state data")
+                
+                self.do_control(gm_st_dict)
+                
+                # Old way V
+                #dict2 = pickle.load(open(self.__data_input_socket.recv(), "rb"))
+                #print dict2
+
                 
         except KeyboardInterrupt:
             pass # Fall through to quit
 
-        self.Quit()  
+        self.quit()  
+
+    def do_control(self, gm_st_dict):
+        pass
+        
+    def request_screen(self):
+
+        sleep(0.1)
+        self.__keyboard.press(Key.f12)
+        sleep(0.25)
+        self.__keyboard.release(Key.f12)
           
-    def Quit(self):
+    def quit(self):
         """
         Shut down server
         """
@@ -95,20 +129,7 @@ class Controller(object):
 
 if __name__ == "__main__":
 
-    program = MAME_PATH + "mame64 pacman"
-    args    = "-window"
-
-    controller = Controller(1111, DEBUG)
-    
-
-    controller.Start()
+    controller = ArcadeController(1111, DEBUG) 
+    controller.start()
 
 
-#    proc_mame = subprocess.Popen([program, args],stdin=subprocess.PIPE)
-#    keyboard = Controller()
-#    sleep(3)
-#    keyboard.press(Key.esc)
-#    
-
-
-    
