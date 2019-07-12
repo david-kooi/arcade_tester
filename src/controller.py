@@ -84,10 +84,10 @@ class ArcadeController(object):
                 self.__logger.debug("Waiting for game state data")
                 pkled_data = self.__data_input_socket.recv()
                 #pkled_data = pkled_data.decode()
-                print(pkled_data)
-                gm_st_dict = pickle.loads(pkled_data) 
+                #print(pkled_data)
+                gm_st_dict = pickle.loads(pkled_data)
                 self.__logger.debug("Recieved game state data")
-                
+                print(gm_st_dict)
                 self.do_control(gm_st_dict)
                 
                 # Old way V
@@ -120,6 +120,25 @@ class ArcadeController(object):
         args.append("-window")
         args.append("pacman")
         proc_mame = subprocess.Popen(args,stdin=subprocess.PIPE)
+
+        # press keys to start
+        sleep(0.5)
+        self.__keyboard.press(Key.enter)
+        sleep(0.25)
+        self.__keyboard.release(Key.enter)
+        sleep(3)
+        self.__keyboard.press('5')
+        sleep(0.25)
+        self.__keyboard.release('5')
+        sleep(2)
+        self.__keyboard.press('5')
+        sleep(0.25)
+        self.__keyboard.release('5')
+        sleep(0.5)
+        self.__keyboard.press('1')
+        sleep(0.25)
+        self.__keyboard.release('1')
+        sleep(3.8)
 
     def request_screen(self):
 

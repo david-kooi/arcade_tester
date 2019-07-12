@@ -4,6 +4,12 @@ import zmq
 import time
 import pickle
 import sys
+import os
+import glob
+
+# Path to mame file system
+MAME_PATH = os.environ["MAME_PATH"]
+SNAP_PATH = os.path.join(MAME_PATH,"snap/pacman")
 
 # Sprite colors in HSV
 PAC_YELLOW = (60, 255, 255)
@@ -75,9 +81,12 @@ def get_avg_pos(isolated_image):
     """
 
     x_list, y_list = np.where(isolated_image == 255)
-    avg_x = sum(x_list) / len(x_list)
-    avg_y = sum(y_list) / len(y_list)
-    return avg_x, avg_y
+    try:
+        avg_x = sum(x_list) / len(x_list)
+        avg_y = sum(y_list) / len(y_list)
+        return avg_x, avg_y
+    except:
+        return 0, 0
 
 def process_pills(image_path):
     """
@@ -86,7 +95,6 @@ def process_pills(image_path):
     @returns: xy values of red pills
     """
     img = cv2.imread(image_path)
-    cv2.line(img, (522, 534), (600, 534), (255, 33, 33), 14)
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     result = cv2.inRange(hsv, (0, .2 * 255, .9 * 255), (20, .4 * 255, 255))
     height = hsv.shape[0]
@@ -96,7 +104,7 @@ def process_pills(image_path):
     mid_last_pill = [0, 0]
     pill_dist = [0, 0]
     # get mid-point of firet and last pill
-    for i in range(0, len(pill_px[1])):
+    for i in range(0, len(pill_px[1])-1):
         if pill_px[1][i + 1] - pill_px[1][i] > 1:
             mid_first_pill[1] = (pill_px[1][i] + pill_px[1][0]) / 2
             pill_dist[1] = pill_px[1][i + 1] - pill_px[1][0]
@@ -105,7 +113,7 @@ def process_pills(image_path):
         if pill_px[1][len(pill_px[1]) - i] - pill_px[1][len(pill_px[1]) - i - 1] > 1:
             mid_last_pill[1] = (pill_px[1][len(pill_px[1]) - i] + pill_px[1][len(pill_px[1]) - 1]) / 2
             break
-    for j in range(0, len(pill_px[0])):
+    for j in range(0, len(pill_px[0])-1):
         if pill_px[0][j + 1] - pill_px[0][j] >= 2:
             mid_first_pill[0] = (pill_px[0][j] + pill_px[0][0]) / 2
             pill_dist[0] = pill_px[0][j + 1] - pill_px[0][0]
@@ -114,8 +122,8 @@ def process_pills(image_path):
         if pill_px[0][len(pill_px[0]) - j] - pill_px[0][len(pill_px[0]) - j - 1] >= 2:
             mid_last_pill[0] = (pill_px[0][len(pill_px[0]) - j] + pill_px[0][len(pill_px[0]) - 1]) / 2
             break
-    game_state["small_pills"] = [(0, 0)]
-    game_state["big_pills"] = [(0, 0)]
+    game_state["small_pills"] = []
+    game_state["big_pills"] = []
     pill_list = {"small_pills": [(0, 0)], "big_pills": [(0, 0)]}
     # check if pill is at intersection
     for j in range(0, 26):
@@ -135,8 +143,6 @@ def process_pills(image_path):
                 else:
                     game_state["small_pills"].append(
                         (mid_last_pill[0] - i * pill_dist[0], mid_first_pill[1] + j * pill_dist[1]))
-    del game_state["small_pills"][0]
-    del game_state["big_pills"][0]
 
 def process_obs(BORDER_BLUE, hsv_img):
     """
@@ -147,7 +153,7 @@ def process_obs(BORDER_BLUE, hsv_img):
     pass
 
 def draw_track(image_path):
-    img = cv2. imread(image_path)
+    img = cv2.imread(image_path)
     cv2.line(img, (522, 534), (600, 534), (255, 33, 33), 14)
     new_img = np.zeros((1275, 1126, 3), np.uint8)
     hsv = cv2. cvtColor(img, cv2.COLOR_BGR2HSV)
@@ -169,25 +175,34 @@ def draw_track(image_path):
         cv2.circle(new_img, (pill[1], pill[0]), 25, (255, 255, 255))
 
 
-    final = cv2.resize(new_img, (int(.5*1126), int(.5*1275)))
+    #final = cv2.resize(new_img, (int(.5*1126), int(.5*1275)))
     #ret,gray = cv2.threshold(final, 0, (255, 0, 0), cv2.THRESH_BINARY)
-    cv2.imshow("newtrack", final)
+    cv2.imshow("newtrack", new_img)
     cv2.waitKey(0)
 
 
 def main():
-
-    tic = time.clock()
-    dictionary("screenshot_2.png")
-    toc = time.clock()
-    print("Processing Time: {}".format(toc-tic))
-
-    #draw_track("screenshot_2.png")
-
     port = 1111
     context = zmq.Context()
     socket = context.socket(zmq.PUB)
     socket.bind("tcp://*:1111")
+
+    list_of_files = glob.glob(os.path.join(SNAP_PATH, "*"))
+    latest_file = max(list_of_files, key=os.path.getctime)
+    print latest_file
+    img = cv2.imread(latest_file)
+    print img.shape[:2]
+    tic = time.clock()
+
+    img = cv2.imread(latest_file)
+    cv2.imshow("aosijd", img)
+    cv2.waitKey(0)
+
+    dictionary(os.path.join(SNAP_PATH, latest_file))
+    toc = time.clock()
+    print("Processing Time: {}".format(toc-tic))
+'''
+    #draw_track(os.path.join(SNAP_PATH, "0000.png"))
 
     pkled_data = pickle.dumps(game_state) 
     #pickle.dump(game_state, open("dict1.p", "wb"))
@@ -195,6 +210,6 @@ def main():
     while True:
         socket.send(pkled_data)
         time.sleep(1)
-
+'''
 if __name__ == "__main__":
     main()
