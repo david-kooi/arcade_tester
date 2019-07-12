@@ -55,6 +55,7 @@ class ArcadeController(object):
         self.__data_input_socket = self.__context.socket(zmq.SUB)
         try:
             self.__data_input_socket.setsockopt(zmq.SUBSCRIBE,b"")
+            self.__data_input_socket.setsockopt(zmq.RCVTIMEO, 1000)
             self.__data_input_socket.connect("tcp://localhost:{}".format(data_input_port))
         except zmq.ZMQError as e:
             if e.errno == zmq.EADDRINUSE:
@@ -80,20 +81,18 @@ class ArcadeController(object):
                 self.__logger.debug("Requesting Screen")
                 self.request_screen()
 
-                # Better to do operations explicitly
                 self.__logger.debug("Waiting for game state data")
-                pkled_data = self.__data_input_socket.recv()
-                #pkled_data = pkled_data.decode()
-                print(pkled_data)
-                gm_st_dict = pickle.loads(pkled_data) 
-                self.__logger.debug("Recieved game state data")
-                
-                self.do_control(gm_st_dict)
-                
-                # Old way V
-                #dict2 = pickle.load(open(self.__data_input_socket.recv(), "rb"))
-                #print dict2
+                try:
+                    pkled_data = self.__data_input_socket.recv()
+                except zmq.ZMQError as e:
+                    if e.errno == zmq.EAGAIN:
+                        self.__logger.debug("Recv timeout")
+                        continue
 
+                self.__logger.debug("Recieved game state data")
+                gm_st_dict = pickle.loads(pkled_data)
+                self.do_control(gm_st_dict)
+            
                 
         except KeyboardInterrupt:
             pass # Fall through to quit
@@ -120,6 +119,25 @@ class ArcadeController(object):
         args.append("-window")
         args.append("pacman")
         proc_mame = subprocess.Popen(args,stdin=subprocess.PIPE)
+
+        # press keys to start
+        sleep(0.5)
+        self.__keyboard.press(Key.enter)
+        sleep(0.25)
+        self.__keyboard.release(Key.enter)
+        sleep(3)
+        self.__keyboard.press('5')
+        sleep(0.25)
+        self.__keyboard.release('5')
+        sleep(2)
+        self.__keyboard.press('5')
+        sleep(0.25)
+        self.__keyboard.release('5')
+        sleep(0.5)
+        self.__keyboard.press('1')
+        sleep(0.25)
+        self.__keyboard.release('1')
+        sleep(3.8)
 
     def request_screen(self):
 
