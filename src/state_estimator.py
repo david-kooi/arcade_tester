@@ -64,8 +64,8 @@ def get_contours(img_hsv):
     lower_bound = (H_lo, S_lo, V_lo) 
     upper_bound = (H_hi, S_hi, V_hi)
 
-    #result = cv2.inRange(hsv, (110, .8*255, .9*255), (130, .95*255, 255))
-    result = cv2.inRange(img_hsv, lower_bound, upper_bound) 
+    result = cv2.inRange(img_hsv, (110, .8*255, .9*255), (130, .95*255, 255))
+    #result = cv2.inRange(img_hsv, lower_bound, upper_bound) 
     _, contours, _ = cv2.findContours(result, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
     return contours
@@ -199,7 +199,8 @@ def draw_track(img, game_state):
     new_img = np.zeros((height, width, 3), np.uint8)
     hsv = cv2. cvtColor(img, cv2.COLOR_BGR2HSV)
  
-    contours = game_state["contours"]
+    contours = game_state["contours"] 
+    #print contours
     for contour in contours:
         if cv2.contourArea(contour) > 85:
             cv2.drawContours(new_img, contour, -1, 255, 1)
@@ -224,7 +225,7 @@ def draw_track(img, game_state):
     resized = cv2.resize(new_img, (width, height))
 
     cv2.imshow("newtrack", resized)
-    cv2.waitKey(30)
+    cv2.waitKey(10)
 
 
 
@@ -269,7 +270,7 @@ def main(port):
             continue
 
 
-        print latest_filepath
+        #print latest_filepath
         latest_img_bgr = cv2.imread(latest_filepath)
         if(latest_img_bgr is None):
             continue
@@ -284,6 +285,7 @@ def main(port):
 
         socket.send(pkled_data)
         draw_track(latest_img_bgr, game_state)
+        time.sleep(0.1)
         
 
 
