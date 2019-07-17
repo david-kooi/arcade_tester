@@ -18,7 +18,7 @@ GH_BLUE         = (180.24, .988*255, .9765*255)
 GH_ORANGE       = (32.69, .5847*255, .9725*255)
 GH_PINK         = (301.85, .261*255, .9765*255)
 PILL_RED        = (9, .3175*255, .9882*255)
-BORDER_BLUE     = (241.52, .7453*255, .4157*255)
+BORDER_BLUE     = (240, .871*255, 1*255)
 BORDER_BLUE_BGR = (255, 33, 33)
 COLOR_LIST      = [PAC_YELLOW, GH_RED, GH_BLUE, GH_ORANGE, GH_PINK]
 
@@ -43,6 +43,10 @@ def block_pink(img_bgr):
     thinkness = 14
     cv2.line(img_bgr, PINK_BLOCK_LEFT, PINK_BLOCK_RIGHT, (255, 33, 33), thinkness)
 
+def add_border(img_bgr):
+    bordersize = 5
+    return cv2.copyMakeBorder(img_bgr, bordersize, bordersize, bordersize, bordersize, cv2.BORDER_CONSTANT, value=[0, 255, 0])
+
 def process_image(img_bgr, game_state):
     """
     1. Add average color positions of characters in COLOR_LIST to game_state
@@ -64,8 +68,8 @@ def get_contours(img_hsv):
     lower_bound = (H_lo, S_lo, V_lo) 
     upper_bound = (H_hi, S_hi, V_hi)
 
-    result = cv2.inRange(img_hsv, (110, .8*255, .9*255), (130, .95*255, 255))
-    #result = cv2.inRange(img_hsv, lower_bound, upper_bound) 
+    #result = cv2.inRange(img_hsv, (110, .8*255, .9*255), (130, .95*255, 255))
+    result = cv2.inRange(img_hsv, lower_bound, upper_bound)
     _, contours, _ = cv2.findContours(result, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
     return contours
@@ -155,7 +159,7 @@ def process_pills(img_bgr, game_state):
         game_state["contours"] = contours
 
         FIRST_RUN = False
- 
+
 
     game_state["small_pills"] = []
     game_state["big_pills"] = []
@@ -180,14 +184,6 @@ def process_pills(img_bgr, game_state):
                     game_state["small_pills"].append(
                         (MID_LAST_PILL[0] - i * PILL_DIST[0], MID_FIRST_PILL[1] + j * PILL_DIST[1]))
 
-def process_obs(BORDER_BLUE, hsv_img):
-    """
-    @input hsv_img: HSV type image
-    @input BORDER_BLUE: isolate blue border 
-    @returns: processes locations of blue border
-    """
-    pass
-
 def draw_track(img, game_state):
   
     character_size  = 8 
@@ -198,13 +194,14 @@ def draw_track(img, game_state):
     width  = img.shape[1]
     new_img = np.zeros((height, width, 3), np.uint8)
     hsv = cv2. cvtColor(img, cv2.COLOR_BGR2HSV)
- 
-    contours = game_state["contours"] 
-    #print contours
-    for contour in contours:
-        if cv2.contourArea(contour) > 85:
+
+    for contour in game_state["contours"]:
+        if cv2.contourArea(contour) > 0:
             cv2.drawContours(new_img, contour, -1, 255, 1)
             #print cv2.contourArea(contour)
+
+    cv2.imshow("hello", new_img)
+    cv2.waitKey(0)
 
     cv2.circle(new_img, (game_state["PACMAN"][1], game_state["PACMAN"][0]), character_size, (0, 255, 255))
     cv2.circle(new_img, (game_state["GHRED"][1], game_state["GHRED"][0]), character_size, (0, 0, 255))
@@ -220,8 +217,8 @@ def draw_track(img, game_state):
     #final = cv2.resize(new_img, (int(.5*1126), int(.5*1275)))
     #ret,gray = cv2.threshold(final, 0, (255, 0, 0), cv2.THRESH_BINARY)
 
-    width = width * 7 
-    height = height * 7
+    width = width * 2
+    height = height * 2
     resized = cv2.resize(new_img, (width, height))
 
     cv2.imshow("newtrack", resized)
@@ -276,9 +273,10 @@ def main(port):
             continue
 
         block_pink(latest_img_bgr)
+        latest_img_bgr = add_border(latest_img_bgr)
 
-        #cv2.imshow("Latest Image", latest_img_bgr)
-        #cv2.waitKey(0)
+        cv2.imshow("Latest Image", latest_img_bgr)
+        cv2.waitKey(0)
  
         process_image(latest_img_bgr, game_state)
         pkled_data = pickle.dumps(game_state) 
