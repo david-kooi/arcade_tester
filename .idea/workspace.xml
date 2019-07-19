@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="cbb23254-36b8-455b-a1f2-e17117a93e18" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/state_estimator.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/state_estimator.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -27,8 +28,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/state_estimator.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="261">
-              <caret line="198" column="39" selection-start-line="198" selection-start-column="39" selection-end-line="198" selection-end-column="39" />
+            <state relative-caret-position="441">
+              <caret line="249" column="7" lean-forward="true" selection-start-line="249" selection-start-column="7" selection-end-line="249" selection-end-column="7" />
               <folding>
                 <element signature="e#0#10#0" expanded="true" />
               </folding>
@@ -44,7 +45,7 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/test/test_sub.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="132">
+            <state relative-caret-position="120">
               <caret line="11" selection-start-line="11" selection-end-line="11" />
               <folding>
                 <element signature="e#0#10#0" expanded="true" />
@@ -61,8 +62,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/controller.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="120">
-              <caret line="109" column="13" lean-forward="true" selection-start-line="109" selection-start-column="13" selection-end-line="109" selection-end-column="13" />
+            <state relative-caret-position="1116">
+              <caret line="109" column="13" selection-start-line="109" selection-start-column="13" selection-end-line="109" selection-end-column="13" />
               <folding>
                 <element signature="e#0#9#0" expanded="true" />
               </folding>
@@ -81,7 +82,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>imshow</find>
       <find>1126</find>
       <find>border_blue</find>
       <find>get_contou</find>
@@ -90,10 +90,16 @@
       <find>first_run</find>
       <find>process_pills</find>
       <find>isolate</find>
-      <find>get_cont</find>
       <find>imread</find>
       <find>get_contour</find>
       <find>contour</find>
+      <find>get_con</find>
+      <find>pill_px</find>
+      <find>get_cont</find>
+      <find>add_</find>
+      <find>np.where</find>
+      <find>draw_border</find>
+      <find>imshow</find>
     </findStrings>
   </component>
   <component name="Git.Settings">
@@ -121,7 +127,6 @@
       <foldersAlwaysOnTop value="true" />
     </navigator>
     <panes>
-      <pane id="Scope" />
       <pane id="ProjectPane">
         <subPane>
           <expand>
@@ -153,6 +158,7 @@
           <select />
         </subPane>
       </pane>
+      <pane id="Scope" />
     </panes>
   </component>
   <component name="PropertiesComponent">
@@ -185,7 +191,7 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="51" y="18" width="1317" height="750" extended-state="0" />
+    <frame x="49" y="18" width="1317" height="750" extended-state="0" />
     <editor active="true" />
     <layout>
       <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.2650231" />
@@ -230,7 +236,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/test/test_sub.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="132">
+        <state relative-caret-position="120">
           <caret line="11" selection-start-line="11" selection-end-line="11" />
           <folding>
             <element signature="e#0#10#0" expanded="true" />
@@ -243,8 +249,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/controller.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="120">
-          <caret line="109" column="13" lean-forward="true" selection-start-line="109" selection-start-column="13" selection-end-line="109" selection-end-column="13" />
+        <state relative-caret-position="1116">
+          <caret line="109" column="13" selection-start-line="109" selection-start-column="13" selection-end-line="109" selection-end-column="13" />
           <folding>
             <element signature="e#0#9#0" expanded="true" />
           </folding>
@@ -256,8 +262,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/state_estimator.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="261">
-          <caret line="198" column="39" selection-start-line="198" selection-start-column="39" selection-end-line="198" selection-end-column="39" />
+        <state relative-caret-position="441">
+          <caret line="249" column="7" lean-forward="true" selection-start-line="249" selection-start-column="7" selection-end-line="249" selection-end-column="7" />
           <folding>
             <element signature="e#0#10#0" expanded="true" />
           </folding>
