@@ -17,6 +17,7 @@ GH_RED          = (0.25, 255, .949*255)
 GH_BLUE         = (180.24, .988*255, .9765*255)
 GH_ORANGE       = (32.69, .5847*255, .9725*255)
 GH_PINK         = (301.85, .261*255, .9765*255)
+GH_WHITE        = (240, .13*255, .99*255)
 PILL_RED        = (9, .3175*255, .9882*255)
 BORDER_BLUE     = (240, .871*255, 1*255)
 BORDER_BLUE_BGR = (255, 33, 33)
@@ -26,7 +27,7 @@ COLOR_LIST      = [PAC_YELLOW, GH_RED, GH_BLUE, GH_ORANGE, GH_PINK]
 # mid_first_pill[0]: Row position
 # mid_first_pill[1]: Row position
 MID_FIRST_PILL = [0, 0]
-MID_LAST_PILL = [0, 0]
+#MID_LAST_PILL = [0, 0]
 
 # PILL_DIST[0]: Row spacing
 # PILL_DIST[1]: Column spacing
@@ -51,26 +52,6 @@ def block_unwanted(img_bgr):
     cv2.line(img_bgr, TOP_BLOCK_LEFT, TOP_BLOCK_RIGHT, (0, 0, 0), TOP_THICK)
     cv2.line(img_bgr, BOTTOM_BLOCK_LEFT, BOTTOM_BLOCK_RIGHT, (0, 0, 0), BOTTOM_THICK)
 
-def draw_border(img_bgr, new_img):
-    H_lo = BORDER_BLUE[0] / 2 - 10
-    H_hi = BORDER_BLUE[0] / 2 + 10
-
-    S_lo = BORDER_BLUE[1] - 30
-    S_hi = BORDER_BLUE[1] + 30
-
-    V_lo = BORDER_BLUE[2] - 30
-    V_hi = BORDER_BLUE[2] + 30
-
-    lower_bound = (H_lo, S_lo, V_lo)
-    upper_bound = (H_hi, S_hi, V_hi)
-
-    img_hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
-    img_threshold = cv2.inRange(img_hsv, lower_bound, upper_bound)
-
-    border = np.where(img_threshold == 255)
-    for i in range(len(border[0])):
-        new_img[border[0][i],border[1][i],:] = (254,33,33)
-
 def process_image(img_bgr, game_state):
     """
     1. Add average color positions of characters in COLOR_LIST to game_state
@@ -79,7 +60,7 @@ def process_image(img_bgr, game_state):
     isolate_characters(img_bgr, game_state)
     process_pills(img_bgr, game_state)
 
-def get_contours(img_hsv):
+def get_contours(img_hsv, game_state):
     H_lo = BORDER_BLUE[0]/2 - 10
     H_hi = BORDER_BLUE[0]/2 + 10
 
@@ -92,11 +73,39 @@ def get_contours(img_hsv):
     lower_bound = (H_lo, S_lo, V_lo) 
     upper_bound = (H_hi, S_hi, V_hi)
 
-    #result = cv2.inRange(img_hsv, (100, .67*255, .8*255), (140, .97*255, 255))
     result = cv2.inRange(img_hsv, lower_bound, upper_bound)
     _, contours, _ = cv2.findContours(result, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
-    return contours
+    game_state["GHDARK"] = []
+    game_state["contours"] = contours
+    for contour in contours:
+        area = cv2.contourArea(contour)
+        if area > 100.0 and area < 300.0 and area != 153.0 and area != 209.0:
+            moment = cv2.moments(contour)
+            cX = int(moment["m10"] / moment["m00"])
+            cY = int(moment["m01"] / moment["m00"])
+            game_state["GHDARK"].append((cY, cX))
+
+    H_lo = GH_WHITE[0]/2 - 10
+    H_hi = GH_WHITE[0]/2 + 10
+
+    S_lo = GH_WHITE[1] - 30
+    S_hi = GH_WHITE[1] + 30
+
+    V_lo = GH_WHITE[2] - 30
+    V_hi = GH_WHITE[2] + 30
+
+    lower_bound = (H_lo, S_lo, V_lo)
+    upper_bound = (H_hi, S_hi, V_hi)
+
+    result2 = cv2.inRange(img_hsv, lower_bound, upper_bound)
+    _, contours, _ = cv2.findContours(result2, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+
+    for contour in contours:
+        moment = cv2.moments(contour)
+        cX = int(moment["m10"] / moment["m00"])
+        cY = int(moment["m01"] / moment["m00"])
+        game_state["GHDARK"].append((cY, cX))
 
 def isolate_characters(img_bgr, game_state):
     """
@@ -108,6 +117,10 @@ def isolate_characters(img_bgr, game_state):
     """
 
     img_hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
+
+    ##TODO: Better organize
+    get_contours(img_hsv, game_state)
+
     positions = []
     for color in COLOR_LIST:
         lower_bound = ((color[0]-30)/2, color[1]-30, color[2]-30)
@@ -139,28 +152,27 @@ def get_avg_pos(isolated_image):
         return 0, 0
 
 def determine_pill_grid(pill_px):
-    
-    # get mid-point of firet and last pill
+    # get mid-point of first and last pill
+    MID_FIRST_PILL[0] = pill_px[0][0]
+    MID_FIRST_PILL[1] = pill_px[1][0]
     for i in range(0, len(pill_px[1])-1):
         if pill_px[1][i + 1] - pill_px[1][i] > 1:
-            MID_FIRST_PILL[1] = (pill_px[1][i] + pill_px[1][0]) / 2
+            #MID_FIRST_PILL[1] = (pill_px[1][i] + pill_px[1][0]) / 2
             PILL_DIST[1] = pill_px[1][i + 1] - pill_px[1][0]
             break
-    for i in range(1, len(pill_px[1])):
-        if pill_px[1][len(pill_px[1]) - i] - pill_px[1][len(pill_px[1]) - i - 1] > 1:
-            MID_LAST_PILL[1] = (pill_px[1][len(pill_px[1]) - i] + pill_px[1][len(pill_px[1]) - 1]) / 2
-            break
+    #for i in range(1, len(pill_px[1])):
+    #    if pill_px[1][len(pill_px[1]) - i] - pill_px[1][len(pill_px[1]) - i - 1] > 1:
+    #        MID_LAST_PILL[1] = (pill_px[1][len(pill_px[1]) - i] + pill_px[1][len(pill_px[1]) - 1]) / 2
+    #        break
     for j in range(0, len(pill_px[0])-1):
-        if pill_px[0][j + 1] - pill_px[0][j] >= 2:
-            MID_FIRST_PILL[0] = (pill_px[0][j] + pill_px[0][0]) / 2
+        if pill_px[0][j + 1] - pill_px[0][j] > 1:
+            #MID_FIRST_PILL[0] = (pill_px[0][j] + pill_px[0][0]) / 2
             PILL_DIST[0] = pill_px[0][j + 1] - pill_px[0][0]
             break
-    for j in range(1, len(pill_px[0])):
-        if pill_px[0][len(pill_px[0]) - j] - pill_px[0][len(pill_px[0]) - j - 1] >= 2:
-            MID_LAST_PILL[0] = (pill_px[0][len(pill_px[0]) - j] + pill_px[0][len(pill_px[0]) - 1]) / 2
-            break
-
-
+    #for j in range(1, len(pill_px[0])):
+    #    if pill_px[0][len(pill_px[0]) - j] - pill_px[0][len(pill_px[0]) - j - 1] >= 2:
+    #        MID_LAST_PILL[0] = (pill_px[0][len(pill_px[0]) - j] + pill_px[0][len(pill_px[0]) - 1]) / 2
+    #        break
 
 
 def process_pills(img_bgr, game_state):
@@ -178,35 +190,22 @@ def process_pills(img_bgr, game_state):
         pill_px = np.where(img_threshold == 255)
         determine_pill_grid(pill_px)
 
-        ##TODO: Better organize
-        contours = get_contours(img_hsv)
-        game_state["contours"] = contours
-
         FIRST_RUN = False
 
 
     game_state["small_pills"] = []
     game_state["big_pills"] = []
-    pill_list = {"small_pills": [(0, 0)], "big_pills": [(0, 0)]}
 
     # check if pill is at intersection
     for j in range(0, 26):
-        for i in range(0, 15):
+        for i in range(0, 29):
             if np.any(img_threshold[MID_FIRST_PILL[0] + i * PILL_DIST[0], MID_FIRST_PILL[1] + j * PILL_DIST[1]] == 255):
-                if i == 2 and (j == 0 or j == 25):
+                if (i == 2 and (j == 0 or j == 25)) or (i == 22 and (j == 0 or j == 25)):
                     game_state["big_pills"].append(
                         (MID_FIRST_PILL[0] + i * PILL_DIST[0], MID_FIRST_PILL[1] + j * PILL_DIST[1]))
                 else:
                     game_state["small_pills"].append(
                         (MID_FIRST_PILL[0] + i * PILL_DIST[0], MID_FIRST_PILL[1] + j * PILL_DIST[1]))
-        for i in range(0, 14):
-            if np.any(img_threshold[MID_LAST_PILL[0] - i * PILL_DIST[0], MID_FIRST_PILL[1] + j * PILL_DIST[1]] == 255):
-                if i == 6 and (j == 0 or j == 25):
-                    game_state["big_pills"].append(
-                        (MID_LAST_PILL[0] - i * PILL_DIST[0], MID_FIRST_PILL[1] + j * PILL_DIST[1]))
-                else:
-                    game_state["small_pills"].append(
-                        (MID_LAST_PILL[0] - i * PILL_DIST[0], MID_FIRST_PILL[1] + j * PILL_DIST[1]))
 
 def draw_track(img, game_state):
   
@@ -220,15 +219,17 @@ def draw_track(img, game_state):
     new_img = np.zeros((height, width, 3), np.uint8)
 
     for contour in game_state["contours"]:
-        if cv2.contourArea(contour) != 1.0:
+        area = cv2.contourArea(contour)
+        if area != 1.0 and (area < 100.0 or area > 300.0 or area == 153.0 or area == 209.0):
             cv2.drawContours(new_img, contour, -1, (255, 33, 33), 1)
-            print cv2.contourArea(contour)
 
     cv2.circle(new_img, (game_state["PACMAN"][1], game_state["PACMAN"][0]), character_size, (0, 255, 255))
     cv2.circle(new_img, (game_state["GHRED"][1], game_state["GHRED"][0]), character_size, (0, 0, 255))
     cv2.circle(new_img, (game_state["GHBLUE"][1], game_state["GHBLUE"][0]), character_size, (255, 255, 0))
     cv2.circle(new_img, (game_state["GHORANGE"][1], game_state["GHORANGE"][0]), character_size, (75, 170, 233))
     cv2.circle(new_img, (game_state["GHPINK"][1], game_state["GHPINK"][0]), character_size, (255, 185, 255))
+    for ghost in game_state["GHDARK"]:
+        cv2.circle(new_img, (ghost[1], ghost[0]), character_size, (255, 33, 33))
     for pill in game_state["small_pills"]:
         cv2.circle(new_img, (pill[1], pill[0]), small_pill_size, (255, 255, 255))
     for pill in game_state["big_pills"]:
@@ -290,7 +291,6 @@ def main(port):
         latest_img_bgr = cv2.imread(latest_filepath)
         if(latest_img_bgr is None):
             continue
-
         block_unwanted(latest_img_bgr)
  
         process_image(latest_img_bgr, game_state)
