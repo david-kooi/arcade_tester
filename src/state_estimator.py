@@ -157,6 +157,8 @@ def get_avg_pos(isolated_image):
         return 0, 0
 
 def determine_pill_grid(pill_px):
+    
+
     # get mid-point of first and last pill
     MID_FIRST_PILL[0] = pill_px[0][0]
     MID_FIRST_PILL[1] = pill_px[1][0]
@@ -193,9 +195,11 @@ def process_pills(img_bgr, game_state):
 
     if(FIRST_RUN):
         pill_px = np.where(img_threshold == 255)
-        determine_pill_grid(pill_px)
-
-        FIRST_RUN = False
+        try:
+            determine_pill_grid(pill_px)
+            FIRST_RUN = False
+        except IndexError:
+            FIRST_RUN = True
 
 
     game_state["small_pills"] = []
