@@ -76,36 +76,41 @@ def get_contours(img_hsv, game_state):
     result = cv2.inRange(img_hsv, lower_bound, upper_bound)
     _, contours, _ = cv2.findContours(result, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
+
     game_state["GHDARK"] = []
     game_state["contours"] = contours
-    for contour in contours:
-        area = cv2.contourArea(contour)
-        if area > 100.0 and area < 300.0 and area != 153.0 and area != 209.0:
+
+    try:
+        for contour in contours:
+            area = cv2.contourArea(contour)
+            if area > 100.0 and area < 300.0 and area != 153.0 and area != 209.0:
+                moment = cv2.moments(contour)
+                cX = int(moment["m10"] / moment["m00"])
+                cY = int(moment["m01"] / moment["m00"])
+                game_state["GHDARK"].append((cY, cX))
+
+        H_lo = GH_WHITE[0]/2 - 10
+        H_hi = GH_WHITE[0]/2 + 10
+
+        S_lo = GH_WHITE[1] - 30
+        S_hi = GH_WHITE[1] + 30
+
+        V_lo = GH_WHITE[2] - 30
+        V_hi = GH_WHITE[2] + 30
+
+        lower_bound = (H_lo, S_lo, V_lo)
+        upper_bound = (H_hi, S_hi, V_hi)
+
+        result2 = cv2.inRange(img_hsv, lower_bound, upper_bound)
+        _, contours, _ = cv2.findContours(result2, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+
+        for contour in contours:
             moment = cv2.moments(contour)
             cX = int(moment["m10"] / moment["m00"])
             cY = int(moment["m01"] / moment["m00"])
             game_state["GHDARK"].append((cY, cX))
-
-    H_lo = GH_WHITE[0]/2 - 10
-    H_hi = GH_WHITE[0]/2 + 10
-
-    S_lo = GH_WHITE[1] - 30
-    S_hi = GH_WHITE[1] + 30
-
-    V_lo = GH_WHITE[2] - 30
-    V_hi = GH_WHITE[2] + 30
-
-    lower_bound = (H_lo, S_lo, V_lo)
-    upper_bound = (H_hi, S_hi, V_hi)
-
-    result2 = cv2.inRange(img_hsv, lower_bound, upper_bound)
-    _, contours, _ = cv2.findContours(result2, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-
-    for contour in contours:
-        moment = cv2.moments(contour)
-        cX = int(moment["m10"] / moment["m00"])
-        cY = int(moment["m01"] / moment["m00"])
-        game_state["GHDARK"].append((cY, cX))
+    except ZeroDivisionError:
+        pass
 
 def isolate_characters(img_bgr, game_state):
     """
@@ -197,15 +202,18 @@ def process_pills(img_bgr, game_state):
     game_state["big_pills"] = []
 
     # check if pill is at intersection
-    for j in range(0, 26):
-        for i in range(0, 29):
-            if np.any(img_threshold[MID_FIRST_PILL[0] + i * PILL_DIST[0], MID_FIRST_PILL[1] + j * PILL_DIST[1]] == 255):
-                if (i == 2 and (j == 0 or j == 25)) or (i == 22 and (j == 0 or j == 25)):
-                    game_state["big_pills"].append(
-                        (MID_FIRST_PILL[0] + i * PILL_DIST[0], MID_FIRST_PILL[1] + j * PILL_DIST[1]))
-                else:
-                    game_state["small_pills"].append(
-                        (MID_FIRST_PILL[0] + i * PILL_DIST[0], MID_FIRST_PILL[1] + j * PILL_DIST[1]))
+    try:
+        for j in range(0, 26):
+            for i in range(0, 29):
+                if np.any(img_threshold[MID_FIRST_PILL[0] + i * PILL_DIST[0], MID_FIRST_PILL[1] + j * PILL_DIST[1]] == 255):
+                    if (i == 2 and (j == 0 or j == 25)) or (i == 22 and (j == 0 or j == 25)):
+                        game_state["big_pills"].append(
+                            (MID_FIRST_PILL[0] + i * PILL_DIST[0], MID_FIRST_PILL[1] + j * PILL_DIST[1]))
+                    else:
+                        game_state["small_pills"].append(
+                            (MID_FIRST_PILL[0] + i * PILL_DIST[0], MID_FIRST_PILL[1] + j * PILL_DIST[1]))
+    except IndexError:
+        pass
 
 def draw_track(img, game_state):
   
