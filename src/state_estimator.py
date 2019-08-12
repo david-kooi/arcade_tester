@@ -175,6 +175,8 @@ def get_avg_pos(isolated_image):
         return 0, 0
 
 def determine_pill_grid(pill_px):
+    
+
     # get mid-point of first and last pill
     MID_FIRST_PILL[0] = pill_px[0][0]
     MID_FIRST_PILL[1] = pill_px[1][0]
@@ -214,24 +216,29 @@ def process_pills(img_bgr, game_state):
         get_border(img_hsv, game_state)
 
         pill_px = np.where(img_threshold == 255)
-        determine_pill_grid(pill_px)
-
-        FIRST_RUN = False
+        try:
+            determine_pill_grid(pill_px)
+            FIRST_RUN = False
+        except IndexError:
+            FIRST_RUN = True
 
 
     game_state["small_pills"] = []
     game_state["big_pills"] = []
 
     # check if pill is at intersection
-    for j in range(0, 26):
-        for i in range(0, 29):
-            if np.any(img_threshold[MID_FIRST_PILL[0] + i * PILL_DIST[0], MID_FIRST_PILL[1] + j * PILL_DIST[1]] == 255):
-                if (i == 2 and (j == 0 or j == 25)) or (i == 22 and (j == 0 or j == 25)):
-                    game_state["big_pills"].append(
-                        (MID_FIRST_PILL[0] + i * PILL_DIST[0], MID_FIRST_PILL[1] + j * PILL_DIST[1]))
-                else:
-                    game_state["small_pills"].append(
-                        (MID_FIRST_PILL[0] + i * PILL_DIST[0], MID_FIRST_PILL[1] + j * PILL_DIST[1]))
+    try:
+        for j in range(0, 26):
+            for i in range(0, 29):
+                if np.any(img_threshold[MID_FIRST_PILL[0] + i * PILL_DIST[0], MID_FIRST_PILL[1] + j * PILL_DIST[1]] == 255):
+                    if (i == 2 and (j == 0 or j == 25)) or (i == 22 and (j == 0 or j == 25)):
+                        game_state["big_pills"].append(
+                            (MID_FIRST_PILL[0] + i * PILL_DIST[0], MID_FIRST_PILL[1] + j * PILL_DIST[1]))
+                    else:
+                        game_state["small_pills"].append(
+                            (MID_FIRST_PILL[0] + i * PILL_DIST[0], MID_FIRST_PILL[1] + j * PILL_DIST[1]))
+    except IndexError:
+        pass
 
 def draw_track(img, game_state):
   
