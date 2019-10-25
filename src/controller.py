@@ -5,6 +5,8 @@ import subprocess
 from time import sleep
 from pynput.keyboard import Key, Controller
 
+import numpy as np
+import cv2
 
 from zmq.eventloop.ioloop import IOLoop, PeriodicCallback 
 from zmq.eventloop.zmqstream import ZMQStream
@@ -15,6 +17,9 @@ from zmq.eventloop.zmqstream import ZMQStream
 from logging import DEBUG, INFO, ERROR 
 from utils import logging_util
 from utils.logging_util import GetLogger
+
+from state_estimator import normalize
+
 
 
 
@@ -90,8 +95,8 @@ class ArcadeController(object):
                         continue
 
                 self.__logger.debug("Recieved game state data")
-                gm_st_dict = pickle.loads(pkled_data)
-                self.do_control(gm_st_dict)
+                game_state = pickle.loads(pkled_data)
+                self.do_control(game_state)
             
                 
         except KeyboardInterrupt:
@@ -99,8 +104,58 @@ class ArcadeController(object):
 
         self.quit()  
 
-    def do_control(self, gm_st_dict):
-        pass
+    def do_control(self, game_state):
+        potential_map = game_state["potential_map"]
+
+        p_x, p_y = game_state["PACMAN"][0], game_state["PACMAN"][1]
+        dx, dy   = self.get_gradient(p_x, p_y, potential_map)
+
+        # Compute next step
+        curr_pos = np.array([p_x, p_y])
+        grad_pos = np.array([dx, dy])
+
+        alpha = 1
+        next_pos = curr_pos - alpha * grad_pos 
+
+        # Get angle to next pos
+        delta_pos = next_pos - curr_pos
+        theta = np.arctan(delta_pos[1]/delta_pos[0])
+
+        self.draw_gradient(curr_pos, grad_pos)
+
+        if(theta > 0 and theta <= np.pi/2):
+            pass
+        elif(theta > np.pi/2 and theta <= np.pi):
+            pass
+        elif(theta > np.pi and theta <= 3*np.pi/2):
+            pass
+        else:
+            pass
+
+
+
+    def draw_gradient(self, curr_pos, grad_pos):
+       grad_img = np.zeros((100, 100), np.uint8) 
+       grad_img.fill(255)
+
+       next_pos = curr_pos + grad_pos
+       pt1 = int(curr_pos[0]), int(curr_pos[1])
+       pt2 = int(next_pos[0]), int(next_pos[1])
+
+       cv2.line(grad_img, pt1, pt2, 0) 
+       cv2.imshow("grad_img", grad_img)
+       cv2.waitKey(10) 
+
+
+        
+    def get_gradient(self, x_pos, y_pos, potential_map):
+        grad = np.gradient(potential_map)
+
+        x_grad = grad[0] 
+        y_grad = grad[1]
+
+        return x_grad[x_pos][y_pos], y_grad[x_pos][y_pos] 
+
         
 
     def get_zmq_context(self):

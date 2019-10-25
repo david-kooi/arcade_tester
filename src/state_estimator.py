@@ -6,6 +6,7 @@ import pickle
 import sys
 import os
 import glob
+import struct
 
 # Path to mame file system
 MAME_PATH = os.environ["MAME_PATH"]
@@ -47,6 +48,21 @@ BOTTOM_BLOCK_LEFT  = (0, 280)
 BOTTOM_BLOCK_RIGHT = (224, 280)
 
 
+
+def norm(peak_x, peak_y, mesh_x, mesh_y):
+    C_squared = (peak_x - mesh_x)**2 + (peak_y - mesh_y)**2 
+
+    return np.sqrt(C_squared)
+
+def normalize(X, x_min, x_max):
+    diff = x_max - x_min
+    num  = X - x_min
+    den  = np.max(X) - np.min(X)
+    return diff*num/den + x_min 
+
+
+
+
 def block_unwanted(img_bgr):
     cv2.line(img_bgr, PINK_BLOCK_LEFT, PINK_BLOCK_RIGHT, (255, 33, 33), PINK_THICK)
     cv2.line(img_bgr, TOP_BLOCK_LEFT, TOP_BLOCK_RIGHT, (0, 0, 0), TOP_THICK)
@@ -56,9 +72,14 @@ def process_image(img_bgr, game_state):
     """
     1. Add average color positions of characters in COLOR_LIST to game_state
     2. Find pill location and add to game state
+    3. Compute potential field 
     """
     isolate_characters(img_bgr, game_state)
     process_pills(img_bgr, game_state)
+    
+    compute_potential(img_bgr, game_state)
+
+
 
 def get_contours(img_hsv, game_state):
     H_lo = BORDER_BLUE[0]/2 - 10
@@ -219,6 +240,77 @@ def process_pills(img_bgr, game_state):
     except IndexError:
         pass
 
+def compute_potential(bgr_img, game_state):
+
+    scale  = 1
+    Ca     = 50
+    Cb     = 100
+    upper_limit = 100
+
+    img_height = bgr_img.shape[0]
+    img_width  = bgr_img.shape[1]
+
+
+    # Create the x, y coordinates 
+    #potential_map = np.zeros((img_width, img_height,1),np.int8) 
+    xx = np.linspace(0, img_width, img_width)
+    yy = np.linspace(0, img_height, img_height)
+    X, Y = np.meshgrid(xx, yy)
+    Z = X.copy() 
+    Z.fill(0)
+    
+    positions = []
+    positions.append( game_state["GHRED"])
+    positions.append( game_state["GHBLUE"])
+    positions.append( game_state["GHORANGE"])
+    positions.append( game_state["GHPINK"])
+
+    # Create a potential map
+    # Note: Positions are flipped in images 
+    for (y,x) in positions:
+        # Get norm of all point away from ghost
+        D = norm(x,y, X,Y)
+        D = D + 0.001 # Get rid of zero
+
+        # Calculate potential
+        Z_i = Ca / (D**2 + Cb)
+        Z += Z_i
+#        Z = np.clip(Z, 0, upper_limit)
+
+
+    # Plot 2D
+    #fig_2d = plt.figure()
+    #ax = fig_2d.gca()
+    Z_2d = normalize(Z, 0, 255)
+    D_2d = normalize(D, 0, 255)
+    D_2d = D_2d.astype(np.uint8)
+
+    # Package to send to controller
+    game_state["potential_map"] = Z_2d.copy() 
+
+
+    # Display
+    img_width = img_width * 2
+    img_height = img_height * 2
+    resized = cv2.resize(Z_2d, (img_width, img_height))
+        
+    Z_2d = normalize(Z_2d, 0, 1) 
+    cv2.imshow("newtrack", Z_2d) 
+    cv2.waitKey(10)
+
+
+    
+
+    #draw_track(Z_2d, game_state)
+    
+#    cv2.imwrite("norm.png", D_2d)
+#    cv2.imwrite("potential.png", Z_2d)
+
+#    cv2.waitKey(10)
+    #plt.imshow(Z_2d, cmap='gray', vmin=0, vmax=255)
+    #plt.show()
+
+
 def draw_track(img, game_state):
   
     character_size  = 8 
@@ -251,10 +343,12 @@ def draw_track(img, game_state):
     #final = cv2.resize(new_img, (int(.5*1126), int(.5*1275)))
     #ret,gray = cv2.threshold(final, 0, (255, 0, 0), cv2.THRESH_BINARY)
 
+    new_img = np.expand_dims(new_img, axis=-1)
+
     width = width * 2
     height = height * 2
     resized = cv2.resize(new_img, (width, height))
-
+        
     cv2.imshow("newtrack", resized)
     cv2.waitKey(10)
 
@@ -309,7 +403,7 @@ def main(port):
         pkled_data = pickle.dumps(game_state) 
 
         socket.send(pkled_data)
-        draw_track(latest_img_bgr, game_state)
+        #draw_track(latest_img_bgr, game_state)
         time.sleep(0.1)
         
 
