@@ -75,8 +75,7 @@ def process_image(img_bgr, game_state):
     3. Compute potential field 
     """
     isolate_characters(img_bgr, game_state)
-    process_pills(img_bgr, game_state)
-    
+    process_pills(img_bgr, game_state) 
     compute_potential(img_bgr, game_state)
 
 
@@ -243,8 +242,8 @@ def process_pills(img_bgr, game_state):
 def compute_potential(bgr_img, game_state):
 
     scale  = 1
-    Ca     = 50
-    Cb     = 100
+    Ca     = 200
+    Cb     = 200
     upper_limit = 100
 
     img_height = bgr_img.shape[0]
@@ -282,6 +281,8 @@ def compute_potential(bgr_img, game_state):
     #fig_2d = plt.figure()
     #ax = fig_2d.gca()
     Z_2d = normalize(Z, 0, 255)
+    Z_2d = Z_2d.astype(np.uint8)
+
     D_2d = normalize(D, 0, 255)
     D_2d = D_2d.astype(np.uint8)
 
@@ -294,8 +295,8 @@ def compute_potential(bgr_img, game_state):
     img_height = img_height * 2
     resized = cv2.resize(Z_2d, (img_width, img_height))
         
-    Z_2d = normalize(Z_2d, 0, 1) 
-    cv2.imshow("newtrack", Z_2d) 
+    #Z_2d = normalize(Z_2d, 0, 1) 
+    #cv2.imshow("newtrack", Z_2d) 
     cv2.waitKey(10)
 
 
@@ -381,7 +382,11 @@ def main(port):
     game_state = {}
 
     socket = setup_zmq(port)
+
+    # Swipe all previous snapshots
+    os.system("rm {}/*".format(SNAP_PATH))
  
+    k = 0
     while True:
        
         try:
@@ -393,18 +398,22 @@ def main(port):
             continue
 
 
-        #print latest_filepath
+        print latest_filepath
         latest_img_bgr = cv2.imread(latest_filepath)
         if(latest_img_bgr is None):
             continue
         block_unwanted(latest_img_bgr)
  
         process_image(latest_img_bgr, game_state)
+        
+
+        game_state["k"] = str(k)
+        k += 1
         pkled_data = pickle.dumps(game_state) 
 
         socket.send(pkled_data)
         #draw_track(latest_img_bgr, game_state)
-        time.sleep(0.1)
+        time.sleep(0.05)
         
 
 
