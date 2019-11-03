@@ -153,7 +153,7 @@ class ArcadeController(object):
             self.draw_gradient(potential_map, curr_pos, next_pos)
 
 
-        return
+
         if(theta > 0 and theta <= np.pi/2):
             self.__logger.debug("RIGHT UP") 
             self.send_right()

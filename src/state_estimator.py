@@ -58,7 +58,7 @@ def normalize(X, x_min, x_max):
     diff = x_max - x_min
     num  = X - x_min
     den  = np.max(X) - np.min(X)
-    return diff*num/den + x_min 
+    return (diff*num/den) + x_min 
 
 def block_unwanted(img_bgr):
     cv2.line(img_bgr, PINK_BLOCK_LEFT, PINK_BLOCK_RIGHT, (255, 33, 33), PINK_THICK)
@@ -275,12 +275,13 @@ def compute_potential(bgr_img, game_state):
 
 
     # Compute positive potential for ghosts
-    ghost_parameters = {"Ca": 200, "Cb":200}
+    ghost_parameters = {"Ca": 400, "Cb":200}
     ghost_positions = []
     ghost_positions.append( game_state["GHRED"])
     ghost_positions.append( game_state["GHBLUE"])
     ghost_positions.append( game_state["GHORANGE"])
     ghost_positions.append( game_state["GHPINK"])
+
 
     assign_potential_value(game_state,\
             ghost_parameters,\
@@ -288,21 +289,23 @@ def compute_potential(bgr_img, game_state):
             X,Y,Z)
 
     # Compute negative potential for small pills
-    s_pill_parameters = {"Ca": -1, "Cb":1}
+    s_pill_parameters = {"Ca": -10, "Cb":10}
     s_pill_positions = game_state["small_pills"]
 
-#    assign_potential_value(game_state, \
-#            s_pill_parameters, \
-#            s_pill_positions, \
-#            X,Y,Z)
-#
+    assign_potential_value(game_state, \
+            s_pill_parameters, \
+            s_pill_positions, \
+            X,Y,Z)
+
 
     # Plot 2D
     #fig_2d = plt.figure()
     #ax = fig_2d.gca()
 
     Z_2d = normalize(Z, 0, 255)
-    Z_2d = Z.astype(np.uint8) 
+    Z_2d += 128
+    Z_2d = np.clip(Z_2d, 0, 255)
+    Z_2d = Z_2d.astype(np.uint8) 
 
     # Package to send to controller
     game_state["potential_map"] = Z_2d.copy() 
@@ -323,7 +326,7 @@ def compute_potential(bgr_img, game_state):
     #draw_track(Z_2d, game_state)
     
 #    cv2.imwrite("norm.png", D_2d)
-#    cv2.imwrite("potential.png", Z_2d)
+   # cv2.imwrite("potential.png", Z_2d)
 
 #    cv2.waitKey(10)
     #plt.imshow(Z_2d, cmap='gray', vmin=0, vmax=255)
@@ -335,7 +338,6 @@ def assign_potential_value(game_state, parameters, positions, X,Y,Z):
     Ca = parameters["Ca"]
     Cb = parameters["Cb"] 
 
-
     # Create a potential map
     # Note: Positions are flipped in images 
     for (y,x) in positions:
@@ -346,7 +348,8 @@ def assign_potential_value(game_state, parameters, positions, X,Y,Z):
 
         # Calculate potential
         Z_i = Ca / (D**2 + Cb)
-        Z += Z_i
+        Z += Z_i 
+    
 
 
 
