@@ -78,9 +78,7 @@ def process_image(img_bgr, game_state):
     process_pills(img_bgr, game_state) 
     compute_potential(img_bgr, game_state)
 
-
-
-def get_contours(img_hsv, game_state):
+def get_border(img_hsv, game_state):
     H_lo = BORDER_BLUE[0]/2 - 10
     H_hi = BORDER_BLUE[0]/2 + 10
 
@@ -96,41 +94,60 @@ def get_contours(img_hsv, game_state):
     result = cv2.inRange(img_hsv, lower_bound, upper_bound)
     _, contours, _ = cv2.findContours(result, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
+    game_state["border"] = contours
+
+def check_dark_ghosts(img_hsv, game_state):
+    H_lo = BORDER_BLUE[0]/2 - 10
+    H_hi = BORDER_BLUE[0]/2 + 10
+
+    S_lo = BORDER_BLUE[1] - 30
+    S_hi = BORDER_BLUE[1] + 30
+
+    V_lo = BORDER_BLUE[2] - 30
+    V_hi = BORDER_BLUE[2] + 30
+
+    lower_bound = (H_lo, S_lo, V_lo)
+    upper_bound = (H_hi, S_hi, V_hi)
+
+    result = cv2.inRange(img_hsv, lower_bound, upper_bound)
+
+    for contour in game_state["border"]:
+        cv2.fillPoly(result, contour, (0, 0, 0))
+
+    _, contours, _ = cv2.findContours(result, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
     game_state["GHDARK"] = []
-    game_state["contours"] = contours
-
-    try:
-        for contour in contours:
-            area = cv2.contourArea(contour)
-            if area > 100.0 and area < 300.0 and area != 153.0 and area != 209.0:
-                moment = cv2.moments(contour)
-                cX = int(moment["m10"] / moment["m00"])
-                cY = int(moment["m01"] / moment["m00"])
-                game_state["GHDARK"].append((cY, cX))
-
-        H_lo = GH_WHITE[0]/2 - 10
-        H_hi = GH_WHITE[0]/2 + 10
-
-        S_lo = GH_WHITE[1] - 30
-        S_hi = GH_WHITE[1] + 30
-
-        V_lo = GH_WHITE[2] - 30
-        V_hi = GH_WHITE[2] + 30
-
-        lower_bound = (H_lo, S_lo, V_lo)
-        upper_bound = (H_hi, S_hi, V_hi)
-
-        result2 = cv2.inRange(img_hsv, lower_bound, upper_bound)
-        _, contours, _ = cv2.findContours(result2, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-
-        for contour in contours:
+    for contour in contours:
+        area = cv2.contourArea(contour)
+        if area > 4 and area < 1000:
             moment = cv2.moments(contour)
             cX = int(moment["m10"] / moment["m00"])
             cY = int(moment["m01"] / moment["m00"])
             game_state["GHDARK"].append((cY, cX))
-    except ZeroDivisionError:
-        pass
+
+
+    H_lo = GH_WHITE[0]/2 - 5
+    H_hi = GH_WHITE[0]/2 + 5
+
+    S_lo = GH_WHITE[1] - 15
+    S_hi = GH_WHITE[1] + 15
+
+    V_lo = GH_WHITE[2] - 10
+    V_hi = GH_WHITE[2] + 10
+
+    lower_bound = (H_lo, S_lo, V_lo)
+    upper_bound = (H_hi, S_hi, V_hi)
+
+    result2 = cv2.inRange(img_hsv, lower_bound, upper_bound)
+    _, contours, _ = cv2.findContours(result2, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+
+    for contour in contours:
+        area = cv2.contourArea(contour)
+        if area > 12:
+            moment = cv2.moments(contour)
+            cX = int(moment["m10"] / moment["m00"])
+            cY = int(moment["m01"] / moment["m00"])
+            game_state["GHDARK"].append((cY, cX))
 
 def isolate_characters(img_bgr, game_state):
     """
@@ -142,9 +159,6 @@ def isolate_characters(img_bgr, game_state):
     """
 
     img_hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
-
-    ##TODO: Better organize
-    get_contours(img_hsv, game_state)
 
     positions = []
     for color in COLOR_LIST:
@@ -159,6 +173,8 @@ def isolate_characters(img_bgr, game_state):
     game_state["GHBLUE"] = positions[2]
     game_state["GHORANGE"] = positions[3]
     game_state["GHPINK"] = positions[4]
+
+    check_dark_ghosts(img_hsv, game_state)
 
 
 def get_avg_pos(isolated_image):
@@ -214,6 +230,9 @@ def process_pills(img_bgr, game_state):
     img_threshold = cv2.inRange(img_hsv, (0, .2 * 255, .9 * 255), (20, .4 * 255, 255))
 
     if(FIRST_RUN):
+        ##TODO: Better organize
+        get_border(img_hsv, game_state)
+
         pill_px = np.where(img_threshold == 255)
         try:
             determine_pill_grid(pill_px)
@@ -323,7 +342,7 @@ def draw_track(img, game_state):
 
     new_img = np.zeros((height, width, 3), np.uint8)
 
-    for contour in game_state["contours"]:
+    for contour in game_state["border"]:
         area = cv2.contourArea(contour)
         if area != 1.0 and (area < 100.0 or area > 300.0 or area == 153.0 or area == 209.0):
             cv2.drawContours(new_img, contour, -1, (255, 33, 33), 1)
