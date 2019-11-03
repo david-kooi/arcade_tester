@@ -102,7 +102,6 @@ class ArcadeController(object):
 
                 self.do_control(game_state)
 
-                #sleep(0.1)
             
                 
         except KeyboardInterrupt:
@@ -113,8 +112,6 @@ class ArcadeController(object):
     def do_control(self, game_state):
         # Potential map should be uint8 image
         potential_map = game_state["potential_map"]
-
-
 
         p_y, p_x = game_state["PACMAN"][0], game_state["PACMAN"][1]
         curr_pos = np.array([p_x, p_y], dtype=np.int)
@@ -156,6 +153,7 @@ class ArcadeController(object):
             self.draw_gradient(potential_map, curr_pos, next_pos)
 
 
+        return
         if(theta > 0 and theta <= np.pi/2):
             self.__logger.debug("RIGHT UP") 
             self.send_right()

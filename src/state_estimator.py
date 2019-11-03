@@ -60,9 +60,6 @@ def normalize(X, x_min, x_max):
     den  = np.max(X) - np.min(X)
     return diff*num/den + x_min 
 
-
-
-
 def block_unwanted(img_bgr):
     cv2.line(img_bgr, PINK_BLOCK_LEFT, PINK_BLOCK_RIGHT, (255, 33, 33), PINK_THICK)
     cv2.line(img_bgr, TOP_BLOCK_LEFT, TOP_BLOCK_RIGHT, (0, 0, 0), TOP_THICK)
@@ -74,8 +71,8 @@ def process_image(img_bgr, game_state):
     2. Find pill location and add to game state
     3. Compute potential field 
     """
-    isolate_characters(img_bgr, game_state)
     process_pills(img_bgr, game_state) 
+    isolate_characters(img_bgr, game_state) 
     compute_potential(img_bgr, game_state)
 
 def get_border(img_hsv, game_state):
@@ -260,11 +257,6 @@ def process_pills(img_bgr, game_state):
 
 def compute_potential(bgr_img, game_state):
 
-    scale  = 1
-    Ca     = 200
-    Cb     = 200
-    upper_limit = 100
-
     img_height = bgr_img.shape[0]
     img_width  = bgr_img.shape[1]
 
@@ -274,49 +266,56 @@ def compute_potential(bgr_img, game_state):
     xx = np.linspace(0, img_width, img_width)
     yy = np.linspace(0, img_height, img_height)
     X, Y = np.meshgrid(xx, yy)
-    Z = X.copy() 
+
+    Z = X.copy() # Potential values 
+    D = X.copy() # Distance values
     Z.fill(0)
+    D.fill(0)
     
-    positions = []
-    positions.append( game_state["GHRED"])
-    positions.append( game_state["GHBLUE"])
-    positions.append( game_state["GHORANGE"])
-    positions.append( game_state["GHPINK"])
 
-    # Create a potential map
-    # Note: Positions are flipped in images 
-    for (y,x) in positions:
-        # Get norm of all point away from ghost
-        D = norm(x,y, X,Y)
-        D = D + 0.001 # Get rid of zero
 
-        # Calculate potential
-        Z_i = Ca / (D**2 + Cb)
-        Z += Z_i
-#        Z = np.clip(Z, 0, upper_limit)
+    # Compute positive potential for ghosts
+    ghost_parameters = {"Ca": 200, "Cb":200}
+    ghost_positions = []
+    ghost_positions.append( game_state["GHRED"])
+    ghost_positions.append( game_state["GHBLUE"])
+    ghost_positions.append( game_state["GHORANGE"])
+    ghost_positions.append( game_state["GHPINK"])
 
+    assign_potential_value(game_state,\
+            ghost_parameters,\
+            ghost_positions, \
+            X,Y,Z)
+
+    # Compute negative potential for small pills
+    s_pill_parameters = {"Ca": -1, "Cb":1}
+    s_pill_positions = game_state["small_pills"]
+
+#    assign_potential_value(game_state, \
+#            s_pill_parameters, \
+#            s_pill_positions, \
+#            X,Y,Z)
+#
 
     # Plot 2D
     #fig_2d = plt.figure()
     #ax = fig_2d.gca()
-    Z_2d = normalize(Z, 0, 255)
-    Z_2d = Z_2d.astype(np.uint8)
 
-    D_2d = normalize(D, 0, 255)
-    D_2d = D_2d.astype(np.uint8)
+    Z_2d = normalize(Z, 0, 255)
+    Z_2d = Z.astype(np.uint8) 
 
     # Package to send to controller
     game_state["potential_map"] = Z_2d.copy() 
 
 
     # Display
-    img_width = img_width * 2
-    img_height = img_height * 2
-    resized = cv2.resize(Z_2d, (img_width, img_height))
+    #img_width = img_width * 2
+    #img_height = img_height * 2
+    #resized = cv2.resize(Z_2d, (img_width, img_height))
         
-    #Z_2d = normalize(Z_2d, 0, 1) 
-    #cv2.imshow("newtrack", Z_2d) 
-    cv2.waitKey(10)
+#    Z_2d = normalize(Z_2d, 0, 1) 
+#    cv2.imshow("newtrack", Z_2d) 
+#    cv2.waitKey(10)
 
 
     
@@ -329,6 +328,26 @@ def compute_potential(bgr_img, game_state):
 #    cv2.waitKey(10)
     #plt.imshow(Z_2d, cmap='gray', vmin=0, vmax=255)
     #plt.show()
+
+def assign_potential_value(game_state, parameters, positions, X,Y,Z):
+
+    # Potential function parameters
+    Ca = parameters["Ca"]
+    Cb = parameters["Cb"] 
+
+
+    # Create a potential map
+    # Note: Positions are flipped in images 
+    for (y,x) in positions:
+
+        # Get norm of all points away from sprite 
+        D = norm(x,y, X,Y)
+        D = D + 0.001 # Get rid of zero
+
+        # Calculate potential
+        Z_i = Ca / (D**2 + Cb)
+        Z += Z_i
+
 
 
 def draw_track(img, game_state):
