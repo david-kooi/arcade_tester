@@ -73,7 +73,10 @@ def process_image(img_bgr, game_state):
     """
     process_pills(img_bgr, game_state) 
     isolate_characters(img_bgr, game_state) 
-    compute_potential(img_bgr, game_state)
+
+    game_state["img_height"] =  img_bgr.shape[0]
+    game_state["img_width"] = img_bgr.shape[1]    
+    #compute_potential(img_bgr, game_state)
 
 def get_border(img_hsv, game_state):
     H_lo = BORDER_BLUE[0]/2 - 10
@@ -421,6 +424,7 @@ def get_latest_file(folder):
 def main(port):
 
     game_state = {}
+    prev_filepath= ""
 
     socket = setup_zmq(port)
 
@@ -439,22 +443,30 @@ def main(port):
             continue
 
 
-        print latest_filepath
-        latest_img_bgr = cv2.imread(latest_filepath)
-        if(latest_img_bgr is None):
-            continue
-        block_unwanted(latest_img_bgr)
- 
-        process_image(latest_img_bgr, game_state)
-        
+        if(prev_filepath == latest_filepath):
+           pass 
+        else: 
 
-        game_state["k"] = str(k)
-        k += 1
-        pkled_data = pickle.dumps(game_state) 
+            latest_img_bgr = cv2.imread(latest_filepath)
+            if(latest_img_bgr is None):
+                continue
 
-        socket.send(pkled_data)
-        #draw_track(latest_img_bgr, game_state)
-        time.sleep(0.05)
+            print(latest_filepath)
+
+            block_unwanted(latest_img_bgr)
+     
+            process_image(latest_img_bgr, game_state)
+            
+
+            game_state["k"] = str(k)
+            k += 1
+            pkled_data = pickle.dumps(game_state) 
+
+            socket.send(pkled_data)
+            #draw_track(latest_img_bgr, game_state)
+
+            prev_filepath = latest_filepath
+            
         
 
 

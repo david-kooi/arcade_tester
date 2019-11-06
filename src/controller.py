@@ -4,9 +4,12 @@ import pickle
 import subprocess
 from time import sleep
 from pynput.keyboard import Key, Controller
+import pynput.keyboard as keyboard
 
 import numpy as np
 import cv2
+
+from threading import Thread
 
 from zmq.eventloop.ioloop import IOLoop, PeriodicCallback 
 from zmq.eventloop.zmqstream import ZMQStream
@@ -19,6 +22,7 @@ from utils import logging_util
 from utils.logging_util import GetLogger
 
 from state_estimator import normalize
+from compute_potential import get_gradient, compute_potential,assign_potential_value 
 
 
 
@@ -31,6 +35,9 @@ LOG_PATH  = os.path.join(AT_ROOT, "logs")
 MAME_PATH = os.environ["MAME_PATH"]
 
 WHITE = (0, 255, 255)
+
+PAC_STATE = {}
+PAC_STATE["EAT"] = 0
 
 class ArcadeController(object):
     def __init__(self, data_input_port, console_lvl=INFO, file_lvl=INFO, tp_on=False,\
@@ -57,6 +64,12 @@ class ArcadeController(object):
         self.__logger.debug("Data Input Port: {}".format(data_input_port))
 
 
+        self.__pac_state = PAC_STATE["EAT"]
+
+        self.control_timer = ControlTimer(0.1, self.notify_control_ready) 
+        self.keyboard_listener = keyboard.Listener(on_press=self.notify_keypress)
+
+
         # Setup state data socket 
         self.__data_input_socket = self.__context.socket(zmq.SUB)
         try:
@@ -74,12 +87,16 @@ class ArcadeController(object):
         self.__keyboard = Controller()
 
 
+        # Start keyboard listener
+        #self.keyboard_listener.start()
+
     def start(self):
         """
         Start main event loop of the zmq kernel
         """
 
         self.start_game()
+        self.control_timer.start()
 
         try:
             self.__logger.debug("Controller Starting") 
@@ -99,8 +116,12 @@ class ArcadeController(object):
 
                 self.__logger.debug("Recieved game state data " + game_state["k"])
                 self.__k = game_state["k"]
-
-                self.do_control(game_state)
+ 
+                try:
+                    self.do_control(game_state)
+                except Exception as e:
+                    self.__logger.error(e)
+                    self.quit()
 
             
                 
@@ -109,15 +130,26 @@ class ArcadeController(object):
 
         self.quit()  
 
+    def notify_control_ready(self):
+        self.control_ready = True
+    def notify_keypress(self, key):
+	print("Recieved: {}".format(key))
+
     def do_control(self, game_state):
+
+        img_height = game_state["img_height"] 
+        img_width = game_state["img_width"]
+
         # Potential map should be uint8 image
-        potential_map = game_state["potential_map"]
+        potential_map = compute_potential(img_height, img_width,\
+                                          game_state, self.__pac_state)
+
 
         p_y, p_x = game_state["PACMAN"][0], game_state["PACMAN"][1]
         curr_pos = np.array([p_x, p_y], dtype=np.int)
         self.__logger.debug("PacPos: (x: {}, y: {}".format(p_x, p_y))  
 
-        dx, dy   = self.get_gradient(p_x, p_y, potential_map)
+        dx, dy   = get_gradient(p_x, p_y, potential_map)
 
         # Compute next step
 
@@ -126,8 +158,6 @@ class ArcadeController(object):
 
         alpha = 30
         next_pos = curr_pos - alpha * grad_pos 
-
-
 
         # Get angle between horizontal and negative gradient
         neg_grad = -grad_pos
@@ -140,8 +170,7 @@ class ArcadeController(object):
         # and we need to flip degrees 
         if(grad_pos[1] < 0):
             theta = 2*np.pi - theta
-
-
+ 
         self.__logger.debug("Grad : (dx: {}, dy: {})".format(grad_pos[0], grad_pos[1]))
         self.__logger.debug("Next Pos: (x: {},y: {})".format(next_pos[0], next_pos[1]))
         self.__logger.debug("Theta: {}".format(np.rad2deg(theta)))
@@ -152,24 +181,59 @@ class ArcadeController(object):
         else:
             self.draw_gradient(potential_map, curr_pos, next_pos)
 
+         
+
+        if(self.control_ready):
+            self.control_ready = False
+        
+            #self.one_key_control(theta)
+            self.two_key_control(theta)
+        else:
+            self.__logger.debug("Control not ready")
 
 
-        if(theta > 0 and theta <= np.pi/2):
+    def one_key_control(self, theta):
+        
+        pi = np.pi
+
+        if(theta > 0 and theta <= pi/4 or theta > 6*pi/4):
+            self.__logger.debug("RIGHT") 
+            self.send_right()
+        elif(theta > pi/4 and theta <= 3*pi/4):
+            self.__logger.debug("UP") 
+            self.send_up()
+        elif(theta > 3*pi/4 and theta <= 5*pi/4):
+            self.__logger.debug("LEFT") 
+            self.send_left()
+        else:
+            self.__logger.debug("DOWN") 
+            self.send_down()
+
+
+    def two_key_control(self, theta):
+
+        pi = np.pi
+
+        if(theta > 0 and theta <= pi/2):
             self.__logger.debug("RIGHT UP") 
             self.send_right()
             self.send_up()
-        elif(theta > np.pi/2 and theta <= np.pi):
+            self.prev_cmd = "RU"
+        elif(theta > pi/2 and theta <= np.pi):
             self.__logger.debug("LEFT UP") 
             self.send_left()
             self.send_up()
-        elif(theta > np.pi and theta <= 3*np.pi/2):
+            self.prev_cmd = "LU"
+        elif(theta > pi and theta <= 3*np.pi/2):
             self.__logger.debug("LEFT DOWN") 
             self.send_left()
             self.send_down()
+            self.prev_cmd = "LD"
         else:
             self.__logger.debug("RIGHT DOWN") 
             self.send_right()
             self.send_down()
+            self.prev_cmd = "RD"
 
 
     def draw_gradient(self, potential_map, curr_pos, next_pos):
@@ -198,49 +262,6 @@ class ArcadeController(object):
         #cv2.imshow("grad_img", potential_map)
         #cv2.waitKey(10) 
 
-
-
-    def get_gradient(self, x_pos, y_pos, potential_map):
-
-        height = potential_map.shape[0]
-        width = potential_map.shape[1]
-
-        # Handle boundary conditions
-        h = 5
-        if(x_pos - h <= 0):
-            f_x1 = potential_map[y_pos][x_pos]
-            f_x2 = potential_map[y_pos][x_pos+h]
-            den  = h 
-        elif(x_pos + h >= width):
-            f_x1 = potential_map[y_pos][x_pos-h]
-            f_x2 = potential_map[y_pos][x_pos]
-            den  = h
-        else:
-            f_x1 = potential_map[y_pos][x_pos-h]
-            f_x2 = potential_map[y_pos][x_pos+h]
-            den  = 2*h
-        dx   = (float(f_x2) - float(f_x1)) / den
-        #self.__logger.debug("fx1 {} fx2 {}".format(f_x1, f_x2))
-        #self.__logger.debug("dx {}".format(dx))
-
-        # Handle boundary conditions
-        if(y_pos - h <= 0):
-            f_y1 = potential_map[y_pos][x_pos]
-            f_y2 = potential_map[y_pos+h][x_pos]
-            den  = h
-        elif(y_pos + h >= height):
-            f_y1 = potential_map[y_pos][x_pos]
-            f_y2 = potential_map[y_pos-h][x_pos]
-            den  = h
-        else:
-            f_y1 = potential_map[y_pos-h][x_pos]
-            f_y2 = potential_map[y_pos+h][x_pos]
-            den  = 2*h 
-        dy   = (float(f_y2) - float(f_y1)) / den 
-        #self.__logger.debug("fy1 {} fy2 {}".format(f_y1, f_y2))
-        #self.__logger.debug("dy {}".format(dy))
-
-        return dx, dy
 
 
 
@@ -308,7 +329,7 @@ class ArcadeController(object):
         self.press_key(Key.up)
     def press_key(self, key):
         self.__keyboard.press(key)
-        sleep(0.01)
+        sleep(0.05)
         self.__keyboard.release(key)
 
 
@@ -322,8 +343,32 @@ class ArcadeController(object):
         self.__data_input_socket.close()
         self.__context.term() 
 
+        # Stop timer
+        self.control_timer.on = False
+
+class ControlTimer(Thread):
+    def __init__(self, t, callback):
+        Thread.__init__(self)
+
+        self.t = t
+        self.callback = callback
+        self.on = True 
+
+    def run(self):
+        while self.on: 
+            sleep(self.t)
+            self.callback()
+
+#class KeyboardListener(Thread):
+#    def __init__(self):
+#        Thread.__init__(self)
+#
+#    def run(self):
+#
 
 
+
+    
 if __name__ == "__main__":
 
     # Remove all saved potential images
