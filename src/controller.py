@@ -66,7 +66,7 @@ class ArcadeController(object):
 
         self.__pac_state = PAC_STATE["EAT"]
 
-        self.control_timer = ControlTimer(0.1, self.notify_control_ready) 
+        self.control_timer = ControlTimer(0.05, self.notify_control_ready) 
         self.keyboard_listener = keyboard.Listener(on_press=self.notify_keypress)
 
 

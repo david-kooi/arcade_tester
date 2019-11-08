@@ -99,7 +99,7 @@ def compute_potential(img_height, img_width, game_state, pac_state):
     #ax = fig_2d.gca()
 
     Z_2d = normalize(Z, 0, 255)
-    Z_2d += 128
+    Z_2d += 100 
     Z_2d = np.clip(Z_2d, 0, 255)
     Z_2d = Z_2d.astype(np.uint8) 
 
