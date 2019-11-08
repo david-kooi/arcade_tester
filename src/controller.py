@@ -2,7 +2,9 @@ import os
 import zmq
 import pickle
 import subprocess
+import traceback
 from time import sleep
+
 from pynput.keyboard import Key, Controller
 import pynput.keyboard as keyboard
 
@@ -22,10 +24,10 @@ from utils import logging_util
 from utils.logging_util import GetLogger
 
 from state_estimator import normalize
+
 from compute_potential import get_gradient, compute_potential,assign_potential_value 
 
-
-
+from pacman import PAC_STATE
 
 # Path to arcade tester project root
 AT_ROOT   = os.environ["AT_ROOT"]
@@ -36,8 +38,6 @@ MAME_PATH = os.environ["MAME_PATH"]
 
 WHITE = (0, 255, 255)
 
-PAC_STATE = {}
-PAC_STATE["EAT"] = 0
 
 class ArcadeController(object):
     def __init__(self, data_input_port, console_lvl=INFO, file_lvl=INFO, tp_on=False,\
@@ -50,6 +50,11 @@ class ArcadeController(object):
         @params timeout: Quit server after timeout. For unittesting purposes
         """
         self.__k = 0
+        self.p_x = 0
+        self.p_y = 0
+        self.pac_state = PAC_STATE["EAT"]
+        self.control_ready = True
+
         self.__context = zmq.Context()
 
         # Setup global logging settings
@@ -63,8 +68,6 @@ class ArcadeController(object):
         self.__logger.debug("PID: {}".format(os.getpid()))
         self.__logger.debug("Data Input Port: {}".format(data_input_port))
 
-
-        self.__pac_state = PAC_STATE["EAT"]
 
         self.control_timer = ControlTimer(0.1, self.notify_control_ready) 
         self.keyboard_listener = keyboard.Listener(on_press=self.notify_keypress)
@@ -120,8 +123,9 @@ class ArcadeController(object):
                 try:
                     self.do_control(game_state)
                 except Exception as e:
-                    self.__logger.error(e)
+                    traceback.print_exc() 
                     self.quit()
+                    return
 
             
                 
@@ -141,15 +145,15 @@ class ArcadeController(object):
         img_width = game_state["img_width"]
 
         # Potential map should be uint8 image
-        potential_map = compute_potential(img_height, img_width,\
-                                          game_state, self.__pac_state)
+        self.p_y, self.p_x = game_state["PACMAN"][0], game_state["PACMAN"][1]
 
+        potential_map = compute_potential(self, img_height, img_width,\
+                                          game_state)
+ 
+        curr_pos = np.array([self.p_x, self.p_y], dtype=np.int)
+        self.__logger.debug("PacPos: (x: {}, y: {}".format(self.p_x, self.p_y))  
 
-        p_y, p_x = game_state["PACMAN"][0], game_state["PACMAN"][1]
-        curr_pos = np.array([p_x, p_y], dtype=np.int)
-        self.__logger.debug("PacPos: (x: {}, y: {}".format(p_x, p_y))  
-
-        dx, dy   = get_gradient(p_x, p_y, potential_map)
+        dx, dy   = get_gradient(self.p_x, self.p_y, potential_map)
 
         # Compute next step
 

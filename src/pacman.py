@@ -1,0 +1,3 @@
+PAC_STATE = {}
+PAC_STATE["EAT"] = 0
+PAC_STATE["RUN"] = 1
