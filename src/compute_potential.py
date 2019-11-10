@@ -78,13 +78,12 @@ def compute_potential(controller, img_height, img_width, game_state):
     D = X.copy() # Distance values
     
     Vg.fill(0)
-    Vp.fill(64)
+    Vp.fill(0)
     Vd.fill(128)
     D.fill(0)
     
 
-    # Compute positive potential for ghosts
-    ghost_parameters = {"Ca": 400, "Cb":400}
+    ## Compute potential for ghosts
     ghost_positions = []
     ghost_positions.append( game_state["GHRED"])
     ghost_positions.append( game_state["GHBLUE"])
@@ -92,20 +91,31 @@ def compute_potential(controller, img_height, img_width, game_state):
     ghost_positions.append( game_state["GHPINK"])
 
 
-    assign_potential_value(game_state,\
-            ghost_parameters,\
-            ghost_positions, \
-            X,Y,Vg)
+    # Ghost Parameters
+    Mg      = 255
+    alpha_g = 1
+    def Vp_i(D):
+        # Assuming all elements of D are positive
+
+        # Crop D to the domain of the ghost
+        Dg = np.sqrt(2*Mg/alpha_g)
+        np.place(D, D > Dg, 0) 
+
+        V_i = Mg - 1/2*(alpha_g) * D**2
+        np.place(V, V + V_i,  
+        return 
+
+    assign_potential_value(Vp_i, ghost_positions, X,Y,Vg)
 
     # Compute negative potential for small pills
     s_pill_parameters = {"Ca": -20, "Cb":10}
     s_pill_positions = game_state["small_pills"]
 
-    assign_potential_value(game_state, \
-            s_pill_parameters, \
-            s_pill_positions, \
-            X,Y,Vp)
-
+#    assign_potential_value(game_state, \
+#            s_pill_parameters, \
+#            s_pill_positions, \
+#            X,Y,Vp)
+#
     # Compute negative potential for vunerable ghosts
 #    dark_ghost_parameters = {"Ca": -400, "Cb":400}
 #    dark_ghost_positions  = game_state{"GHDARK"]
@@ -116,22 +126,11 @@ def compute_potential(controller, img_height, img_width, game_state):
 
 
 
-    # Plot 2D
-    #fig_2d = plt.figure()
-    #ax = fig_2d.gca()
+    V = Vg
+    V = np.clip(V, 0, 255)
+    V = V.astype(np.uint8) 
 
-    Vp = normalize(Vp, 0, 255)
-    Vg = normalize(Vg, 0, 255)
-#    Vd = normalize(Vd, 0, 255)
-    V_2d = compute_switch(controller, Vp, Vg)  
-
-
-    #V_2d = normalize(V, 0, 255)
-    #V_2d += 128
-    V_2d = np.clip(V_2d, 0, 255)
-    V_2d = V_2d.astype(np.uint8) 
-
-    return V_2d
+    return V
 
 
     # Display
@@ -182,13 +181,9 @@ def compute_switch(controller, Vp, Vg):
 
     return V
 
-def assign_potential_value(game_state, parameters, positions, X,Y,Z):
+def assign_potential_value(Vi, positions, X,Y,V):
 
-    # Potential function parameters
-    Ca = parameters["Ca"]
-    Cb = parameters["Cb"] 
-
-    # Create a potential map
+    # Create the potential map
     # Note: Positions are flipped in images 
     for (y,x) in positions:
 
@@ -198,10 +193,8 @@ def assign_potential_value(game_state, parameters, positions, X,Y,Z):
 
         # Get norm of all points away from sprite 
         D = norm(x,y, X,Y)
-        D = D + 0.001 # Get rid of zero
+        #D = D + 0.001 # Get rid of zero
 
         # Calculate potential
-        Z_i = Ca / (D**2 + Cb)
-        Z += Z_i 
-    
+        V += Vi(D)     
 
