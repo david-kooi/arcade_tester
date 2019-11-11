@@ -74,11 +74,10 @@ def compute_potential(controller, img_height, img_width, game_state):
 
     Vg = X.copy() # Ghost potential values 
     Vd = X.copy()
-    Vp = X.copy() # Pill potential 
+
     D = X.copy() # Distance values
     
     Vg.fill(0)
-    Vp.fill(0)
     Vd.fill(128)
     D.fill(0)
     
@@ -92,24 +91,43 @@ def compute_potential(controller, img_height, img_width, game_state):
 
 
     # Ghost Parameters
-    Mg      = 255
-    alpha_g = 1
+    Mg      = 100 
+    alpha_g = 0.075
+    def Vg_i(D):
+        # Assuming all elements of D are positive
+
+        # Crop D to the domain of the ghost
+        Dg   = np.sqrt(2*Mg/alpha_g)
+        Vg_i = Mg - 0.5*(alpha_g) * D**2
+        Vg_i = np.where(D < Dg, Vg_i, 0) 
+    
+        return Vg_i
+
+    assign_potential_value(Vg_i, ghost_positions, X,Y,Vg)
+
+
+    # Compute potentials for small pills
+    Mp =20 
+    alpha_p = 1
+    s_pill_positions = game_state["small_pills"]
+
+    Vp = X.copy() 
+    Vp.fill(Mp)
+    
     def Vp_i(D):
         # Assuming all elements of D are positive
 
         # Crop D to the domain of the ghost
-        Dg = np.sqrt(2*Mg/alpha_g)
-        np.place(D, D > Dg, 0) 
+        Dg   = np.sqrt(2*Mp/alpha_p)
+        Vp_i = - Mp + 0.5*(alpha_p) * D**2
+        Vp_i = np.where(D < Dg, Vp_i, 0) 
+    
+        return Vp_i
 
-        V_i = Mg - 1/2*(alpha_g) * D**2
-        np.place(V, V + V_i,  
-        return 
+    assign_potential_value(Vp_i, s_pill_positions, X,Y,Vp) 
 
-    assign_potential_value(Vp_i, ghost_positions, X,Y,Vg)
 
-    # Compute negative potential for small pills
-    s_pill_parameters = {"Ca": -20, "Cb":10}
-    s_pill_positions = game_state["small_pills"]
+
 
 #    assign_potential_value(game_state, \
 #            s_pill_parameters, \
@@ -126,7 +144,7 @@ def compute_potential(controller, img_height, img_width, game_state):
 
 
 
-    V = Vg
+    V = Vg + Vp
     V = np.clip(V, 0, 255)
     V = V.astype(np.uint8) 
 
