@@ -108,7 +108,7 @@ def compute_potential(controller, img_height, img_width, game_state):
 
     # Compute potentials for small pills
     Mp =20 
-    alpha_p = 1
+    alpha_p = 0.1
     s_pill_positions = game_state["small_pills"]
 
     Vp = X.copy() 
@@ -117,7 +117,7 @@ def compute_potential(controller, img_height, img_width, game_state):
     def Vp_i(D):
         # Assuming all elements of D are positive
 
-        # Crop D to the domain of the ghost
+        # Crop D to the domain of the pills 
         Dg   = np.sqrt(2*Mp/alpha_p)
         Vp_i = - Mp + 0.5*(alpha_p) * D**2
         Vp_i = np.where(D < Dg, Vp_i, 0) 
@@ -144,7 +144,7 @@ def compute_potential(controller, img_height, img_width, game_state):
 
 
 
-    V = Vg + Vp
+    V = Vg + Vp + 50
     V = np.clip(V, 0, 255)
     V = V.astype(np.uint8) 
 
