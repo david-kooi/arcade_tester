@@ -92,7 +92,7 @@ def get_border(img_hsv, game_state):
     upper_bound = (H_hi, S_hi, V_hi)
 
     result = cv2.inRange(img_hsv, lower_bound, upper_bound)
-    _, contours, _ = cv2.findContours(result, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    _, contours, _ = cv2.findContours(result, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     game_state["border"] = contours
 
