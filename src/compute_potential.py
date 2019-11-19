@@ -1,4 +1,5 @@
 import numpy as np
+import cv2
 from pacman import PAC_STATE
 
 
@@ -72,15 +73,16 @@ def compute_potential(controller, img_height, img_width, game_state):
     yy = np.linspace(0, img_height, img_height)
     X, Y = np.meshgrid(xx, yy)
 
-    Vg = X.copy() # Ghost potential values 
-    Vd = X.copy()
-
+   
     D = X.copy() # Distance values
-    
-    Vg.fill(0)
-    Vd.fill(128)
     D.fill(0)
     
+    # Form barriers
+    Vb = X.copy()
+    Vb.fill(0)
+    cv2.drawContours(Vb, game_state['border'], -1, 255, -1)
+
+
 
     ## Compute potential for ghosts
     ghost_positions = []
@@ -88,11 +90,12 @@ def compute_potential(controller, img_height, img_width, game_state):
     ghost_positions.append( game_state["GHBLUE"])
     ghost_positions.append( game_state["GHORANGE"])
     ghost_positions.append( game_state["GHPINK"])
-
-
     # Ghost Parameters
     Mg      = 100 
     alpha_g = 0.075
+
+    Vg = X.copy() # Ghost potential values 
+    Vg.fill(0)
     def Vg_i(D):
         # Assuming all elements of D are positive
 
@@ -112,8 +115,7 @@ def compute_potential(controller, img_height, img_width, game_state):
     s_pill_positions = game_state["small_pills"]
 
     Vp = X.copy() 
-    Vp.fill(Mp)
-    
+    Vp.fill(Mp) 
     def Vp_i(D):
         # Assuming all elements of D are positive
 
@@ -144,11 +146,11 @@ def compute_potential(controller, img_height, img_width, game_state):
 
 
 
-    V = Vg + Vp + 50
+    V = Vb + Vg + Vp + 50
     V = np.clip(V, 0, 255)
     V = V.astype(np.uint8) 
 
-    return V
+    return V, Vb
 
 
     # Display
@@ -215,4 +217,80 @@ def assign_potential_value(Vi, positions, X,Y,V):
 
         # Calculate potential
         V += Vi(D)     
+
+
+class Node(object):
+    def __init__(self, x, y, cost, node_number):
+        self.pos  = [x,y]
+        self.nn   = node_number
+        self.cost = cost
+
+    def get_tuple(self):
+        """
+        Return tuple compatible with priority queue
+        """
+        return (self.cost, self) 
+
+class Best_First_Searcher(object):
+    def __init__(self, i_max):
+        self.Q    = MinPriorityQueue()
+        self.pred = []
+        self.cost = []
+        self.i_max = i_max 
+
+    def run(self, x_0, y_0):
+        alpha = 10 # Step size
+        i     = 0  # Iteration number
+        k     = 0  # Node number
+
+        # Create initial node and add to queue and cost list
+        node = Node(x_0, y_0, 0, k) 
+        k += 1
+
+        heappush(node.get_tuple())
+        self.cost[node.node_number] = node.cost
+
+
+        while(i in range(i_max)): 
+            node_k = self.pop_Q() 
+
+            # Get neighbors
+            angles = [0, np.pi/2, np.pi, 3*np.pi/2]
+            for theta in angles:
+                delta_x = alpha*cos(theta)
+                delta_y = alpha*sin(theta)
+                new_pos = current_node.pos + [delta_x, delta_y]
+
+                # Check if this move is valid
+
+                node_k_1 = Node(new_pos[0], new_pos[1], cost, k)
+                k += 1
+ 
+                self.push_Q(node_k_1)
+                self.prev[node_k_1] = node_k
+
+            i = i+1
+
+
+
+
+
+
+
+    def pop_Q(self):
+        (cost, node) = heappop(self.Q)
+        return node
+
+    def push_Q(self, node):
+        heappush(node.cost, node)
+
+    def clear(self):
+        self.Q.clear()
+        self.pred = []
+        self.cost = []
+
+
+
+
+
 

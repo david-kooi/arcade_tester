@@ -147,7 +147,7 @@ class ArcadeController(object):
         # Potential map should be uint8 image
         self.p_y, self.p_x = game_state["PACMAN"][0], game_state["PACMAN"][1]
 
-        potential_map = compute_potential(self, img_height, img_width,\
+        potential_map, boundary_map = compute_potential(self, img_height, img_width,\
                                           game_state)
  
         curr_pos = np.array([self.p_x, self.p_y], dtype=np.int)
@@ -156,7 +156,6 @@ class ArcadeController(object):
         dx, dy   = get_gradient(self.p_x, self.p_y, potential_map)
 
         # Compute next step
-
         grad_pos = np.array([dx, dy], dtype=np.float) 
         grad_pos = (grad_pos / np.linalg.norm(grad_pos)) # Normalize direction
 
