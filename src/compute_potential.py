@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 from pacman import PAC_STATE
+from heapq import * 
 
 
 
@@ -231,14 +232,21 @@ class Node(object):
         """
         return (self.cost, self) 
 
-class Best_First_Searcher(object):
+class BestFirstSearcher(object):
     def __init__(self, i_max):
-        self.Q    = MinPriorityQueue()
+        self.Q    = [] # Min priority queue 
         self.pred = []
         self.cost = []
         self.i_max = i_max 
 
-    def run(self, x_0, y_0):
+        self.neighbor_mask = None
+
+    def set_image_size(self, img):
+
+        # Masking image to check if a neighbor is valid
+        self.neighbor_mask = img.copy()
+
+    def run(self, x_0, y_0, V, Vb):
         alpha = 10 # Step size
         i     = 0  # Iteration number
         k     = 0  # Node number
@@ -247,14 +255,14 @@ class Best_First_Searcher(object):
         node = Node(x_0, y_0, 0, k) 
         k += 1
 
-        heappush(node.get_tuple())
-        self.cost[node.node_number] = node.cost
-
+        self.push_Q(node)
+        self.prev[node.node_number] = -1 
 
         while(i in range(i_max)): 
             node_k = self.pop_Q() 
 
             # Get neighbors
+            self.neighbor_mask.set(0)
             angles = [0, np.pi/2, np.pi, 3*np.pi/2]
             for theta in angles:
                 delta_x = alpha*cos(theta)
@@ -262,16 +270,39 @@ class Best_First_Searcher(object):
                 new_pos = current_node.pos + [delta_x, delta_y]
 
                 # Check if this move is valid
+                x_1 = new_pos[0]
+                y_1 = new_pos[1]
+                cv2.line(self.neighbor_mask, (y_0, x_0), (y_1, x_1), 255)  
+                cv2.bitwise_and(self.neighbor_mask, Vb, self.neighbor_mask)
 
-                node_k_1 = Node(new_pos[0], new_pos[1], cost, k)
-                k += 1
- 
-                self.push_Q(node_k_1)
-                self.prev[node_k_1] = node_k
+                # Check if there is overlap with a border
+                if(np.max(self.neighbor_mask) > 0):
+                    continue 
+                else:
+                    # Direction is good: Add node to queue 
+                    cost = V[y_1][x_1] 
+                    node_k_1 = Node(x_1, y_1, cost, self.k)
+                    self.k += 1
 
-            i = i+1
+                    self.push_Q(node_k_1)
+                    self.prev[node_k_1.node_number] = node_k.node_number 
+            
 
+        # Do backtrace
+        final_node = node_k
+        node_trace = [final_node]
+        k = final_node.node_number
+        while(k > 0):
+            prev_node = self.prev[k]
+            node_trace.append(prev_node)
+            k = prev_node.node_number
 
+        # Reverse node trace to get the order from
+        # inital node to final node
+        node_trace.reverse()
+
+       
+        return node_trace
 
 
 
@@ -282,7 +313,7 @@ class Best_First_Searcher(object):
         return node
 
     def push_Q(self, node):
-        heappush(node.cost, node)
+        heappush((node.cost, node))
 
     def clear(self):
         self.Q.clear()

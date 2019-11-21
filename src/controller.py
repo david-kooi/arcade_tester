@@ -26,6 +26,7 @@ from utils.logging_util import GetLogger
 from state_estimator import normalize
 
 from compute_potential import get_gradient, compute_potential,assign_potential_value 
+from compute_potential import BestFirstSearcher
 
 from pacman import PAC_STATE
 
@@ -54,6 +55,9 @@ class ArcadeController(object):
         self.p_y = 0
         self.pac_state = PAC_STATE["EAT"]
         self.control_ready = True
+
+
+        self.BFS = BestFirstSearcher(10)
 
         self.__context = zmq.Context()
 
@@ -119,6 +123,13 @@ class ArcadeController(object):
 
                 self.__logger.debug("Recieved game state data " + game_state["k"])
                 self.__k = game_state["k"]
+
+
+                if(self.__k == 0):
+                    height = game_state["img_height"]
+                    width  = game_state["img_width"]
+                    img = np.zeros((height, width,1), np.uint8)
+                    self.BFS.set_image_size(img)
  
                 try:
                     self.do_control(game_state)
@@ -153,47 +164,29 @@ class ArcadeController(object):
         curr_pos = np.array([self.p_x, self.p_y], dtype=np.int)
         self.__logger.debug("PacPos: (x: {}, y: {}".format(self.p_x, self.p_y))  
 
-        dx, dy   = get_gradient(self.p_x, self.p_y, potential_map)
+        node_trace = self.BFS.run(self.p_x, self.p_y, potential_map, boundary_map) 
 
-        # Compute next step
-        grad_pos = np.array([dx, dy], dtype=np.float) 
-        grad_pos = (grad_pos / np.linalg.norm(grad_pos)) # Normalize direction
 
-        alpha = 30
-        next_pos = curr_pos - alpha * grad_pos 
-
-        # Get angle between horizontal and negative gradient
-        neg_grad = -grad_pos
-        unit_x   = np.array([1,0])
-        inner    = np.dot(unit_x, neg_grad) / \
-                ( np.linalg.norm(neg_grad) * np.linalg.norm(unit_x))
-        theta = np.arccos(inner) 
-
-        # If grad_y is positive, direction is negative
-        # and we need to flip degrees 
-        if(grad_pos[1] < 0):
-            theta = 2*np.pi - theta
- 
-        self.__logger.debug("Grad : (dx: {}, dy: {})".format(grad_pos[0], grad_pos[1]))
-        self.__logger.debug("Next Pos: (x: {},y: {})".format(next_pos[0], next_pos[1]))
-        self.__logger.debug("Theta: {}".format(np.rad2deg(theta)))
-
-        if(True in np.isnan(next_pos )):
-            # There was no gradient (Likely that Ghosts are blue) 
-            return 
-        else:
-            self.draw_gradient(potential_map, curr_pos, next_pos)
-
-         
-
-        if(self.control_ready):
-            self.control_ready = False
         
-            #self.one_key_control(theta)
-            self.two_key_control(theta)
-        else:
-            self.__logger.debug("Control not ready")
 
+
+
+#        if(True in np.isnan(next_pos )):
+#            # There was no gradient (Likely that Ghosts are blue) 
+#            return 
+#        else:
+#            self.draw_gradient(potential_map, curr_pos, next_pos)
+#
+#         
+#
+#        if(self.control_ready):
+#            self.control_ready = False
+#        
+#            #self.one_key_control(theta)
+#            self.two_key_control(theta)
+#        else:
+#            self.__logger.debug("Control not ready")
+#
 
     def one_key_control(self, theta):
         
