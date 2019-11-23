@@ -223,8 +223,9 @@ def assign_potential_value(Vi, positions, X,Y,V):
 class Node(object):
     def __init__(self, x, y, cost, node_number):
         self.pos  = [x,y]
-        self.nn   = node_number
+        self.node_number= node_number
         self.cost = cost
+        self.prev = []
 
     def get_tuple(self):
         """
@@ -235,11 +236,11 @@ class Node(object):
 class BestFirstSearcher(object):
     def __init__(self, i_max):
         self.Q    = [] # Min priority queue 
-        self.pred = []
-        self.cost = []
         self.i_max = i_max 
+        self.prev = [i_max]
 
         self.neighbor_mask = None
+        self.image_set = False
 
     def set_image_size(self, img):
 
@@ -258,22 +259,22 @@ class BestFirstSearcher(object):
         self.push_Q(node)
         self.prev[node.node_number] = -1 
 
-        while(i in range(i_max)): 
+        while(i in range(self.i_max)): 
             node_k = self.pop_Q() 
 
             # Get neighbors
-            self.neighbor_mask.set(0)
+            self.neighbor_mask.fill(0)
             angles = [0, np.pi/2, np.pi, 3*np.pi/2]
             for theta in angles:
-                delta_x = alpha*cos(theta)
-                delta_y = alpha*sin(theta)
-                new_pos = current_node.pos + [delta_x, delta_y]
+                delta_x = alpha*np.cos(theta)
+                delta_y = alpha*np.sin(theta)
+                new_pos = node_k.pos + np.array([delta_x, delta_y])
 
                 # Check if this move is valid
-                x_1 = new_pos[0]
-                y_1 = new_pos[1]
+                x_1 = int(new_pos[0])
+                y_1 = int(new_pos[1])
                 cv2.line(self.neighbor_mask, (y_0, x_0), (y_1, x_1), 255)  
-                cv2.bitwise_and(self.neighbor_mask, Vb, self.neighbor_mask)
+                self.neighbor_mask = cv2.bitwise_and(self.neighbor_mask, Vb)
 
                 # Check if there is overlap with a border
                 if(np.max(self.neighbor_mask) > 0):
@@ -301,11 +302,9 @@ class BestFirstSearcher(object):
         # inital node to final node
         node_trace.reverse()
 
-       
+      
+        self.clear_data()
         return node_trace
-
-
-
 
 
     def pop_Q(self):
@@ -313,15 +312,11 @@ class BestFirstSearcher(object):
         return node
 
     def push_Q(self, node):
-        heappush((node.cost, node))
+        heappush(self.Q, (node.cost, node))
 
-    def clear(self):
-        self.Q.clear()
-        self.pred = []
-        self.cost = []
-
-
-
-
+    def clear_data(self):
+        self.Q    = []
+        self.prev = []
+    
 
 

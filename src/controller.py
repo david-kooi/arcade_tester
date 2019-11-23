@@ -125,11 +125,12 @@ class ArcadeController(object):
                 self.__k = game_state["k"]
 
 
-                if(self.__k == 0):
+                if(not self.BFS.image_set):
                     height = game_state["img_height"]
                     width  = game_state["img_width"]
-                    img = np.zeros((height, width,1), np.uint8)
+                    img = np.zeros((height, width), np.uint8)
                     self.BFS.set_image_size(img)
+                    self.BFS.image_set = True
  
                 try:
                     self.do_control(game_state)
