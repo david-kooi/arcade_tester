@@ -82,6 +82,7 @@ def compute_potential(controller, img_height, img_width, game_state):
     Vb = X.copy()
     Vb.fill(0)
     cv2.drawContours(Vb, game_state['border'], -1, 255, -1)
+    Vb = Vb.astype(np.uint8)
 
 
 
@@ -149,6 +150,7 @@ def compute_potential(controller, img_height, img_width, game_state):
 
     V = Vb + Vg + Vp + 50
     V = np.clip(V, 0, 255)
+
     V = V.astype(np.uint8) 
 
     return V, Vb
@@ -237,7 +239,7 @@ class BestFirstSearcher(object):
     def __init__(self, i_max):
         self.Q    = [] # Min priority queue 
         self.i_max = i_max 
-        self.prev = [i_max]
+        self.prev = [None] * self.i_max # "Preallocate array"
 
         self.neighbor_mask = None
         self.image_set = False
@@ -246,6 +248,38 @@ class BestFirstSearcher(object):
 
         # Masking image to check if a neighbor is valid
         self.neighbor_mask = img.copy()
+
+
+    def collect_neighbors(self, node_k, Vb, k):
+
+        # Get neighbors
+        self.neighbor_mask.fill(0)
+        angles = [0, np.pi/2, np.pi, 3*np.pi/2]
+        for theta in angles:
+            delta_x = alpha*np.cos(theta)
+            delta_y = alpha*np.sin(theta)
+            new_pos = node_k.pos + np.array([delta_x, delta_y])
+
+            # Check if this move is valid
+            x_1 = int(new_pos[0])
+            y_1 = int(new_pos[1])
+            cv2.line(self.neighbor_mask, (y_0, x_0), (y_1, x_1), 255)  
+            self.neighbor_mask = cv2.bitwise_and(self.neighbor_mask, Vb)
+
+            # Check if there is overlap with a border
+            if(np.max(self.neighbor_mask) > 0):
+                continue 
+            else:
+                # Direction is good: Add node to queue 
+                cost = V[y_1][x_1] 
+                node_k_1 = Node(x_1, y_1, cost, k)
+                if(node_k_1.node_number = self.i_max):
+                    return 1 
+                else:            
+                    k += 1
+                    self.push_Q(node_k_1)
+                    self.prev[node_k_1.node_number] = node_k.node_number 
+        return 0
 
     def run(self, x_0, y_0, V, Vb):
         alpha = 10 # Step size
@@ -261,38 +295,19 @@ class BestFirstSearcher(object):
 
         while(i in range(self.i_max)): 
             node_k = self.pop_Q() 
+            ret = self.collect_neighbors(node_k, Vb, k)
 
-            # Get neighbors
-            self.neighbor_mask.fill(0)
-            angles = [0, np.pi/2, np.pi, 3*np.pi/2]
-            for theta in angles:
-                delta_x = alpha*np.cos(theta)
-                delta_y = alpha*np.sin(theta)
-                new_pos = node_k.pos + np.array([delta_x, delta_y])
+            # ret = 1 means that i_max nodes have been added
+            if(ret == 0):
+                continue
+            else:
+                break
 
-                # Check if this move is valid
-                x_1 = int(new_pos[0])
-                y_1 = int(new_pos[1])
-                cv2.line(self.neighbor_mask, (y_0, x_0), (y_1, x_1), 255)  
-                self.neighbor_mask = cv2.bitwise_and(self.neighbor_mask, Vb)
 
-                # Check if there is overlap with a border
-                if(np.max(self.neighbor_mask) > 0):
-                    continue 
-                else:
-                    # Direction is good: Add node to queue 
-                    cost = V[y_1][x_1] 
-                    node_k_1 = Node(x_1, y_1, cost, self.k)
-                    self.k += 1
-
-                    self.push_Q(node_k_1)
-                    self.prev[node_k_1.node_number] = node_k.node_number 
             
-
         # Do backtrace
-        final_node = node_k
+
         node_trace = [final_node]
-        k = final_node.node_number
         while(k > 0):
             prev_node = self.prev[k]
             node_trace.append(prev_node)
