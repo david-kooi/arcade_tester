@@ -1,8 +1,19 @@
-import numpy as np
-import cv2
-from pacman import PAC_STATE
+import os
 from heapq import * 
 
+import numpy as np
+import cv2
+
+from logging import DEBUG, INFO, ERROR 
+from utils import logging_util
+from utils.logging_util import GetLogger
+
+from pacman import PAC_STATE
+
+
+# Path to arcade tester project root
+AT_ROOT   = os.environ["AT_ROOT"]
+LOG_PATH  = os.path.join(AT_ROOT, "logs")
 
 
 def norm(peak_x, peak_y, mesh_x, mesh_y):
@@ -227,8 +238,10 @@ class Node(object):
         self.pos  = [x,y]
         self.node_number= node_number
         self.cost = cost
-        self.prev = []
+        self.prev = None 
 
+    def get_xy(self):
+        return (self.pos[0], self.pos[1])
     def get_tuple(self):
         """
         Return tuple compatible with priority queue
@@ -236,13 +249,19 @@ class Node(object):
         return (self.cost, self) 
 
 class BestFirstSearcher(object):
-    def __init__(self, i_max):
-        self.Q    = [] # Min priority queue 
-        self.i_max = i_max 
-        self.prev = [None] * self.i_max # "Preallocate array"
+    def __init__(self, i_max, logger):
+        self.Q         = [] # Min priority queue 
+        self.i_max     = i_max 
+        self.prev      = [None] * self.i_max # "Preallocate array"
+        self.node_dict = dict()
+        self.visited   = []
 
         self.neighbor_mask = None
         self.image_set = False
+
+
+        self.__logger = GetLogger("BFS", LOG_PATH, logLevel=DEBUG,\
+                                               fileLevel=DEBUG)
 
     def set_image_size(self, img):
 
@@ -250,12 +269,18 @@ class BestFirstSearcher(object):
         self.neighbor_mask = img.copy()
 
 
-    def collect_neighbors(self, node_k, Vb, k):
+    def collect_neighbors(self, node_k, V, Vb, k):
+        alpha = 20 # Step size
+        x_0 = node_k.pos[0]
+        y_0 = node_k.pos[1]
+
+        self.__logger.debug("Collecting neighbors for node {}, ({},{})".format(k, x_0,y_0))
 
         # Get neighbors
         self.neighbor_mask.fill(0)
         angles = [0, np.pi/2, np.pi, 3*np.pi/2]
         for theta in angles:
+            self.__logger.debug("Theta: {}".format(360*theta/(2*np.pi)))
             delta_x = alpha*np.cos(theta)
             delta_y = alpha*np.sin(theta)
             new_pos = node_k.pos + np.array([delta_x, delta_y])
@@ -263,59 +288,99 @@ class BestFirstSearcher(object):
             # Check if this move is valid
             x_1 = int(new_pos[0])
             y_1 = int(new_pos[1])
-            cv2.line(self.neighbor_mask, (y_0, x_0), (y_1, x_1), 255)  
-            self.neighbor_mask = cv2.bitwise_and(self.neighbor_mask, Vb)
+            self.__logger.debug("New Pos ({},{})".format(x_1, y_1))
+
+            #cv2.line(self.neighbor_mask, (x_0, y_0), (x_1, y_1), 255)  
+            #self.neighbor_mask = cv2.bitwise_and(self.neighbor_mask, Vb)
+
+            # We have seen this already
+            if((x_1,y_1) in self.visited):
+                self.__logger.debug("VISTED")
+                continue
+
 
             # Check if there is overlap with a border
             if(np.max(self.neighbor_mask) > 0):
-                continue 
+
+                image_name = "neighbor_mask_img_" + str(k) + ".png"
+                savepath = os.path.join(os.getcwd(),image_name)
+                #self.__logger.debug("Wrote image : {}".format(image_name))
+
+                check = cv2.imwrite(savepath, self.neighbor_mask) 
+                #if(check == False):
+                #   self.__logger.warning("Did not save neighbor_mask image")
+                continue
+                
             else:
                 # Direction is good: Add node to queue 
-                cost = V[y_1][x_1] 
+                try:
+                    cost = V[y_1][x_1] 
+                    self.__logger.debug("Cost {}".format(cost))
+                except IndexError:
+                    # Next step is out of bounds
+                    continue
+
+
+                k += 1
                 node_k_1 = Node(x_1, y_1, cost, k)
-                if(node_k_1.node_number = self.i_max):
-                    return 1 
-                else:            
-                    k += 1
+                self.__logger.debug("Node {} ({},{})) added. Cost {}".format(k, x_1, y_1, cost))
+                
+                if(node_k_1.node_number == self.i_max):
+                    # The maxinum number of nodes have been evaluated
+                    return (True, node_k.node_number) # Return the latest
+                                                      # node processed 
+                else:             
                     self.push_Q(node_k_1)
                     self.prev[node_k_1.node_number] = node_k.node_number 
-        return 0
+                    node_k_1.prev = node_k
+                    self.node_dict[node_k_1.node_number] = node_k_1
+                    self.visited.append(node_k_1.get_xy())
+
+        return (False, k)
 
     def run(self, x_0, y_0, V, Vb):
-        alpha = 10 # Step size
         i     = 0  # Iteration number
-        k     = 0  # Node number
+        k     = -1 # Node number
 
         # Create initial node and add to queue and cost list
-        node = Node(x_0, y_0, 0, k) 
         k += 1
+        node = Node(x_0, y_0, 0, k) 
+
 
         self.push_Q(node)
         self.prev[node.node_number] = -1 
+        self.node_dict[node.node_number] = node
+        self.visited.append(node.get_xy())
 
-        while(i in range(self.i_max)): 
-            node_k = self.pop_Q() 
-            ret = self.collect_neighbors(node_k, Vb, k)
+        while(True): 
 
-            # ret = 1 means that i_max nodes have been added
-            if(ret == 0):
-                continue
-            else:
+            # Break if we run out of nodes to pop
+            try:
+                node_k = self.pop_Q() 
+            except IndexError:
                 break
+
+            (collection_finished, k) = self.collect_neighbors(node_k, V, Vb, k)
+
+            if(collection_finished):
+                # If we have collected i_max nodes we break
+                break 
+            else:
+                # Otherwise we continue
+                continue 
 
 
             
         # Do backtrace
-
+        # node_trace will be ordered from final node to initial   
+        final_node = self.node_dict[k] 
         node_trace = [final_node]
         while(k > 0):
-            prev_node = self.prev[k]
-            node_trace.append(prev_node)
-            k = prev_node.node_number
+            prev_k = self.prev[k]
+            prev_node = self.node_dict[prev_k]
 
-        # Reverse node trace to get the order from
-        # inital node to final node
-        node_trace.reverse()
+            node_trace.append(prev_node)
+            k = prev_k 
 
       
         self.clear_data()
@@ -330,8 +395,10 @@ class BestFirstSearcher(object):
         heappush(self.Q, (node.cost, node))
 
     def clear_data(self):
-        self.Q    = []
-        self.prev = []
+        self.Q         = []
+        self.prev      = [None] * self.i_max
+        self.node_dict = dict()
+        self.visited   = []
     
 
 

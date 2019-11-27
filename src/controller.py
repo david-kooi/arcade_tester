@@ -57,8 +57,6 @@ class ArcadeController(object):
         self.control_ready = True
 
 
-        self.BFS = BestFirstSearcher(10)
-
         self.__context = zmq.Context()
 
         # Setup global logging settings
@@ -71,6 +69,8 @@ class ArcadeController(object):
         self.__logger.debug("Logger Active")
         self.__logger.debug("PID: {}".format(os.getpid()))
         self.__logger.debug("Data Input Port: {}".format(data_input_port))
+
+        self.BFS = BestFirstSearcher(10, self.__logger)
 
 
         self.control_timer = ControlTimer(0.1, self.notify_control_ready) 
@@ -163,12 +163,15 @@ class ArcadeController(object):
                                           game_state)
  
         curr_pos = np.array([self.p_x, self.p_y], dtype=np.int)
-        self.__logger.debug("PacPos: (x: {}, y: {}".format(self.p_x, self.p_y))  
+        self.__logger.debug("PacPos: (x: {}, y: {})".format(self.p_x, self.p_y))  
 
         node_trace = self.BFS.run(self.p_x, self.p_y, potential_map, boundary_map) 
+        self.__logger.debug("{} Nodes traced".format(len(node_trace)))
 
-
-        
+    
+        self.draw_pacman(potential_map, curr_pos)
+        self.draw_search(potential_map, node_trace) 
+        self.write_image(potential_map)
 
 
 
@@ -188,6 +191,7 @@ class ArcadeController(object):
 #        else:
 #            self.__logger.debug("Control not ready")
 #
+
 
     def one_key_control(self, theta):
         
@@ -233,19 +237,15 @@ class ArcadeController(object):
             self.prev_cmd = "RD"
 
 
-    def draw_gradient(self, potential_map, curr_pos, next_pos):
-        #self.__logger.debug("Drawing gradient")
 
+    def draw_pacman(self, potential_map, curr_pos): 
 
         # Add pacman to image 
         px = int(curr_pos[0])
         py = int(curr_pos[1])
         cv2.circle(potential_map, (px, py), 8, 255, -1) 
 
-        # Add gradient direction to image
-        pt1 = int(curr_pos[0]), int(curr_pos[1])
-        pt2 = int(next_pos[0]), int(next_pos[1])
-        cv2.line(potential_map, pt1, pt2, 255, 2) 
+    def write_image(self, potential_map):
 
         ## Write image to file
         image_name = "potential_img_" + str(self.__k) + ".png"
@@ -255,6 +255,45 @@ class ArcadeController(object):
         check = cv2.imwrite(savepath, potential_map) 
         if(check == False):
            self.__logger.warning("Did not save gradient image")
+
+
+    def draw_search(self, potential_map, node_trace):
+        for node in node_trace:
+            try:
+                node_prev = node.prev 
+
+                x_0 = node_prev.pos[0]
+                x_1 = node.pos[0]
+
+                y_0 = node_prev.pos[1]
+                y_1 = node.pos[1]
+
+                self.__logger.debug("Node {} ({},{}) <- ({},{})".format(node.node_number, x_0, y_0, x_1,y_1))
+
+                
+            except AttributeError:
+                # node.prev was None
+                continue 
+
+            pt1 = int(x_0), int(y_0)
+            pt2 = int(x_1), int(y_1)
+
+
+            cv2.line(potential_map, pt1, pt2, 255, 2) 
+
+
+
+    def draw_gradient(self, potential_map, curr_pos, next_pos):
+        #self.__logger.debug("Drawing gradient")
+
+        self.draw_pacman(potential_map, curr_pos)
+
+        # Add gradient direction to image
+        pt1 = int(curr_pos[0]), int(curr_pos[1])
+        pt2 = int(next_pos[0]), int(next_pos[1])
+        cv2.line(potential_map, pt1, pt2, 255, 2) 
+
+        self.write_image(potential_map)
 
         #cv2.imshow("grad_img", potential_map)
         #cv2.waitKey(10) 
