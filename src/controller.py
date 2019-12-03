@@ -165,7 +165,7 @@ class ArcadeController(object):
         curr_pos = np.array([self.p_x, self.p_y], dtype=np.int)
         self.__logger.debug("PacPos: (x: {}, y: {})".format(self.p_x, self.p_y))  
 
-        node_trace = self.BFS.run(self.p_x, self.p_y, potential_map, boundary_map) 
+        node_trace = self.BFS.run(self.__k, self.p_x, self.p_y, potential_map, boundary_map) 
         self.__logger.debug("{} Nodes traced".format(len(node_trace)))
 
     
@@ -235,7 +235,6 @@ class ArcadeController(object):
             self.send_right()
             self.send_down()
             self.prev_cmd = "RD"
-
 
 
     def draw_pacman(self, potential_map, curr_pos): 
@@ -368,6 +367,9 @@ class ArcadeController(object):
         sleep(0.05)
         self.__keyboard.release(key)
 
+
+    def get_k(self):
+        return self.__k
 
     def quit(self):
         """

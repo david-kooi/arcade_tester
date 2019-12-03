@@ -269,44 +269,55 @@ class BestFirstSearcher(object):
         self.neighbor_mask = img.copy()
 
 
-    def collect_neighbors(self, node_k, V, Vb, k):
-        alpha = 20 # Step size
+    def collect_neighbors(self, control_step, node_k, V, Vb, k):
+        alpha = 15 # Step size
         x_0 = node_k.pos[0]
         y_0 = node_k.pos[1]
 
-        self.__logger.debug("Collecting neighbors for node {}, ({},{})".format(k, x_0,y_0))
+        self.__logger.debug("Collecting neighbors for node {},({},{})".format(node_k.node_number, x_0,y_0))
 
         # Get neighbors
-        self.neighbor_mask.fill(0)
         angles = [0, np.pi/2, np.pi, 3*np.pi/2]
+        theta_k = -1
         for theta in angles:
+            theta_k += 1
+            self.neighbor_mask.fill(0)
+
             self.__logger.debug("Theta: {}".format(360*theta/(2*np.pi)))
             delta_x = alpha*np.cos(theta)
             delta_y = alpha*np.sin(theta)
-            new_pos = node_k.pos + np.array([delta_x, delta_y])
+            delta_step = np.array([delta_x, delta_y])
+            delta_step = np.around(delta_step) # Round to 1 digit
+            self.__logger.debug("{}".format(delta_step))
+
+            new_pos = node_k.pos + delta_step 
+            
 
             # Check if this move is valid
             x_1 = int(new_pos[0])
             y_1 = int(new_pos[1])
             self.__logger.debug("New Pos ({},{})".format(x_1, y_1))
 
-            #cv2.line(self.neighbor_mask, (x_0, y_0), (x_1, y_1), 255)  
-            #self.neighbor_mask = cv2.bitwise_and(self.neighbor_mask, Vb)
+            cv2.line(self.neighbor_mask, (x_0, y_0), (x_1, y_1), 255)  
+            self.neighbor_mask = cv2.bitwise_and(self.neighbor_mask, Vb)
 
             # We have seen this already
             if((x_1,y_1) in self.visited):
                 self.__logger.debug("VISTED")
                 continue
+            else:
+                self.visited.append((x_1,y_1))
 
 
             # Check if there is overlap with a border
             if(np.max(self.neighbor_mask) > 0):
+                self.__logger.debug("Overlap with wall")
 
-                image_name = "neighbor_mask_img_" + str(k) + ".png"
-                savepath = os.path.join(os.getcwd(),image_name)
+                #image_name = "neighbor_mask_img_{}_{}_{}".format(control_step, k, theta_k) + ".png"
+                #savepath = os.path.join(os.getcwd(),image_name)
                 #self.__logger.debug("Wrote image : {}".format(image_name))
 
-                check = cv2.imwrite(savepath, self.neighbor_mask) 
+                #check = cv2.imwrite(savepath, self.neighbor_mask) 
                 #if(check == False):
                 #   self.__logger.warning("Did not save neighbor_mask image")
                 continue
@@ -318,6 +329,7 @@ class BestFirstSearcher(object):
                     self.__logger.debug("Cost {}".format(cost))
                 except IndexError:
                     # Next step is out of bounds
+                    self.__logger.warning("Index Error: for V:{} V[{}][{}]".format(np.shape(V),y_1,x_1))
                     continue
 
 
@@ -334,11 +346,11 @@ class BestFirstSearcher(object):
                     self.prev[node_k_1.node_number] = node_k.node_number 
                     node_k_1.prev = node_k
                     self.node_dict[node_k_1.node_number] = node_k_1
-                    self.visited.append(node_k_1.get_xy())
+                    
 
         return (False, k)
 
-    def run(self, x_0, y_0, V, Vb):
+    def run(self, control_step, x_0, y_0, V, Vb):
         i     = 0  # Iteration number
         k     = -1 # Node number
 
@@ -360,7 +372,8 @@ class BestFirstSearcher(object):
             except IndexError:
                 break
 
-            (collection_finished, k) = self.collect_neighbors(node_k, V, Vb, k)
+            (collection_finished, k) = self.collect_neighbors(control_step, node_k, V, Vb, k)
+            self.__logger.debug("{}".format(k))
 
             if(collection_finished):
                 # If we have collected i_max nodes we break
@@ -373,7 +386,9 @@ class BestFirstSearcher(object):
             
         # Do backtrace
         # node_trace will be ordered from final node to initial   
+        self.__logger.debug("Doing BackTrace")
         final_node = self.node_dict[k] 
+        self.__logger.debug("Final Node: {}".format(k))
         node_trace = [final_node]
         while(k > 0):
             prev_k = self.prev[k]
