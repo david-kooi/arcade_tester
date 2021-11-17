@@ -7,6 +7,7 @@ import sys
 import os
 import glob
 import struct
+import traceback
 
 # Path to mame file system
 MAME_PATH = os.environ["MAME_PATH"]
@@ -74,8 +75,8 @@ def process_image(img_bgr, game_state):
     2. Find pill location and add to game state
     3. Compute potential field 
     """
-    isolate_characters(img_bgr, game_state)
     process_pills(img_bgr, game_state) 
+    isolate_characters(img_bgr, game_state) 
     compute_potential(img_bgr, game_state)
 
 def get_border(img_hsv, game_state):
@@ -91,12 +92,18 @@ def get_border(img_hsv, game_state):
     lower_bound = (H_lo, S_lo, V_lo) 
     upper_bound = (H_hi, S_hi, V_hi)
 
-    result = cv2.inRange(img_hsv, lower_bound, upper_bound)
-    _, contours, _ = cv2.findContours(result, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    
+    result = cv2.inRange(img_hsv, lower_bound, upper_bound) 
+    return_val = cv2.findContours(result, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    contours = return_val[0]
 
     game_state["border"] = contours
 
 def check_dark_ghosts(img_hsv, game_state):
+    """
+    Dark ghosts are the same color as the border. 
+    Make the border white before looking for them.
+    """
     H_lo = BORDER_BLUE[0]/2 - 10
     H_hi = BORDER_BLUE[0]/2 + 10
 
@@ -111,10 +118,14 @@ def check_dark_ghosts(img_hsv, game_state):
 
     result = cv2.inRange(img_hsv, lower_bound, upper_bound)
 
-    for contour in game_state["border"]:
-        cv2.fillPoly(result, contour, (0, 0, 0))
+    try:
+        for contour in game_state["border"]: 
+            cv2.fillPoly(result, list(contour), (0, 0, 0))
+    except KeyError: 
+        return
 
-    _, contours, _ = cv2.findContours(result, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    data  = cv2.findContours(result, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    contours = data[0]
 
     game_state["GHDARK"] = []
     for contour in contours:
@@ -139,7 +150,7 @@ def check_dark_ghosts(img_hsv, game_state):
     upper_bound = (H_hi, S_hi, V_hi)
 
     result2 = cv2.inRange(img_hsv, lower_bound, upper_bound)
-    _, contours, _ = cv2.findContours(result2, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    contours, _ = cv2.findContours(result2, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
 
     for contour in contours:
         area = cv2.contourArea(contour)
@@ -390,6 +401,7 @@ def get_latest_file(folder):
     """
 
     list_of_files = glob.glob(os.path.join(folder, "*"))
+    #print(list_of_files)
     if(not list_of_files):
         raise Exception
 
@@ -417,13 +429,17 @@ def main(port):
             continue
 
 
-        print latest_filepath
+        print(latest_filepath)
         latest_img_bgr = cv2.imread(latest_filepath)
         if(latest_img_bgr is None):
             continue
         block_unwanted(latest_img_bgr)
  
-        process_image(latest_img_bgr, game_state)
+        try:
+            process_image(latest_img_bgr, game_state)
+        except Exception as e:
+            print("Error in process_image")
+            traceback.print_exc() 
         
 
         game_state["k"] = str(k)
