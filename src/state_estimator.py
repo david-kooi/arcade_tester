@@ -409,6 +409,7 @@ def get_latest_file(folder):
     return latest_file
 
 def main(port):
+    print("Starting State Estimator")
 
     game_state = {}
 
